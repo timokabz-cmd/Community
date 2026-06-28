@@ -1,10 +1,22 @@
 import streamlit as st
+import pandas as pd
+from database import get_db_connection
 
 def render_accounting():
-    st.subheader("💼 Financial Ledger")
-    st.info("The Accounting engine is currently being wired to the ledger service.")
+    st.subheader("📊 Transaction Ledger")
     
-    # This keeps the module functional without errors
-    st.write("---")
-    st.write("Ready for double-entry bookkeeping integration.")
-
+    conn = get_db_connection()
+    # Fetch all records from the ledger table
+    query = "SELECT timestamp, amount, narration, operator_name FROM ledger ORDER BY timestamp DESC"
+    df = pd.read_sql_query(query, conn)
+    conn.close()
+    
+    if not df.empty:
+        # Display as a dataframe with professional styling
+        st.dataframe(df, use_container_width=True)
+        
+        # Add a summary total for quick verification
+        total_balance = df['amount'].sum()
+        st.metric("Total Ledger Volume", f"UGX {total_balance:,.0f}")
+    else:
+        st.info("No transactions recorded yet.")
