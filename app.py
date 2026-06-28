@@ -12,6 +12,7 @@ from modules.customers import render_customers
 from modules.loans import render_loans
 from modules.collections import render_collections
 from modules.accounting import render_accounting
+from modules.reporting import render_reporting
 
 # Initialize database tables
 init_db()
@@ -27,7 +28,7 @@ st.set_page_config(
 st.sidebar.title("🏛️ CommunityFinanceOS")
 st.sidebar.write(f"Logged in as: **{st.session_state.user}**")
 
-menu = ["Dashboard", "Customers", "Savings", "Loans", "Collections", "Accounting"]
+menu = ["Dashboard", "Customers", "Savings", "Loans", "Collections", "Accounting", "Reporting"]
 choice = st.sidebar.selectbox("Select Workspace", menu)
 
 # Add logout button
@@ -56,6 +57,9 @@ elif choice == "Collections":
 
 elif choice == "Accounting":
     render_accounting()
+
+elif choice == "Reporting":
+    render_reporting()
 
 else:
     st.warning("Workspace not yet implemented.")
