@@ -4,8 +4,8 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime
 
-# 🗄️ CORE DATABASE ENGINE
-DB_NAME = "sacco_core.db"
+# 🗄️ CORE DATABASE ENGINE (Updated to v2 to clear old table schema errors)
+DB_NAME = "sacco_v2.db"
 
 def get_db_connection():
     conn = sqlite3.connect(DB_NAME)
@@ -15,6 +15,7 @@ def get_db_connection():
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
+    # 1. Create Members Table with full updated columns
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS members (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,6 +27,7 @@ def init_db():
             joined_date TEXT NOT NULL
         )
     ''')
+    # 2. Create Loans Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS loans (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,6 +44,7 @@ def init_db():
             FOREIGN KEY(member_id) REFERENCES members(id)
         )
     ''')
+    # 3. Create General Ledger Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS ledger (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -54,6 +57,8 @@ def init_db():
             operator_name TEXT DEFAULT 'System Automated'
         )
     ''')
+    
+    # Auto-seed mock transactional data if the database is brand new
     cursor.execute("SELECT COUNT(*) FROM members")
     if cursor.fetchone()[0] == 0:
         cursor.executemany("INSERT INTO members (name, phone, national_id, savings_balance, shares_balance, joined_date) VALUES (?, ?, ?, ?, ?, ?)", [
@@ -121,9 +126,10 @@ def process_manual_payment(loan_id, amount, operator):
     conn.close()
     return True, "Payment tracked cleanly in system ledger."
 
+# Kick off database creation on launch
 init_db()
 
-# 🏛️ WORKSPACE INTERFACE
+# 🏛️ WORKSPACE INTERFACE SETUP
 st.set_page_config(page_title="SaccoOS Workspace", layout="wide")
 st.title("🏛️ SaccoOS Workspace Center")
 
@@ -132,7 +138,7 @@ current_workspace = st.sidebar.radio(
     ["📝 Office Operations (Staff)", "🏢 Executive Management", "📊 Business Intelligence & Analytics"]
 )
 
-# 1. OFFICE OPERATIONS
+# 1. OFFICE OPERATIONS PROFILE
 if current_workspace == "📝 Office Operations (Staff)":
     st.header("📝 Front-Office Operations")
     tab1, tab2, tab3 = st.tabs(["👥 Member Registration", "💰 New Loan File", "⚡ Counter Payments"])
@@ -193,7 +199,7 @@ if current_workspace == "📝 Office Operations (Staff)":
         else:
             st.info("No active outstanding loans found.")
 
-# 2. EXECUTIVE MANAGEMENT
+# 2. EXECUTIVE MANAGEMENT PROFILE
 elif current_workspace == "🏢 Executive Management":
     st.header("🏢 Management Oversight Board")
     conn = get_db_connection()
@@ -230,7 +236,7 @@ elif current_workspace == "🏢 Executive Management":
     else:
         st.success("No pending credit applications waiting in queue.")
 
-# 3. DATA ANALYTICS
+# 3. BUSINESS INTELLIGENCE & DATA ANALYTICS
 else:
     st.header("📊 Business Intelligence Engine")
     conn = get_db_connection()
