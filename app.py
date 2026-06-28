@@ -9,9 +9,7 @@ def get_db_connection():
 
 def init_db():
     conn = get_db_connection()
-    # Ensure your schema is created here
     conn.execute('CREATE TABLE IF NOT EXISTS users (username TEXT, password TEXT, role TEXT)')
-    # Add other tables as needed
     conn.commit()
     conn.close()
 
@@ -45,30 +43,13 @@ def check_password():
         return False
     return True
 
-# --- 3. BUSINESS MODULES ---
-def render_dashboard():
-    st.write("### Executive Dashboard")
-    st.info("Overview of loan performance and active collections.")
-
-def render_customers():
-    st.write("### Customer Management")
-    st.write("Register and verify new loan applicants.")
-
-def render_loans():
-    st.write("### Loan Portfolio")
-    st.write("Track active loans, interest, and repayment schedules.")
-
-def render_collections():
-    st.write("### Collections Pipeline")
-    st.write("Manage daily recovery tasks and mobile money webhooks.")
-
-def render_accounting():
-    st.write("### Double-Entry Ledger")
-    st.write("Review all transactions and balance the books.")
-
-def render_reporting():
-    st.write("### Financial Reporting")
-    st.write("Generate regulatory and internal performance reports.")
+# --- 3. BUSINESS MODULES (Your content here) ---
+def render_dashboard(): st.write("### Dashboard")
+def render_customers(): st.write("### Customers")
+def render_loans(): st.write("### Loans")
+def render_collections(): st.write("### Collections")
+def render_accounting(): st.write("### Accounting")
+def render_reporting(): st.write("### Reporting")
 
 # --- 4. APP ROUTER ---
 st.set_page_config(layout="wide", page_title="CommunityFinanceOS", page_icon="🏛️")
@@ -78,17 +59,8 @@ if not check_password():
     st.stop()
 
 st.sidebar.title("🏛️ CommunityFinanceOS")
-st.sidebar.write(f"Logged in as: **{st.session_state.user}**")
-
 menu = ["Dashboard", "Customers", "Loans", "Collections", "Accounting", "Reporting"]
 choice = st.sidebar.selectbox("Select Workspace", menu)
-
-if st.sidebar.button("Logout"):
-    st.session_state.authenticated = False
-    st.session_state.user = None
-    st.rerun()
-
-st.header(f"💼 {choice}")
 
 if choice == "Dashboard": render_dashboard()
 elif choice == "Customers": render_customers()
