@@ -2,9 +2,7 @@ import streamlit as st
 from database import init_db
 from modules.dashboard import render_dashboard
 from modules.customers import render_customers
-# We will uncomment these as we finish building the modules
-# from modules.loans import render_loans
-# from modules.accounting import render_accounting
+from modules.loans import render_loans
 
 # 1. Initialize the system
 init_db()
@@ -25,8 +23,12 @@ if choice == "Dashboard":
 elif choice == "Customers":
     render_customers()
 elif choice == "Loans":
-    st.info("Loan Engine active. Module under final integration.")
+    render_loans()
+elif choice == "Savings":
+    st.info("Savings module is currently under development.")
+elif choice == "Collections":
+    st.info("Collections module is currently under development.")
 elif choice == "Accounting":
-    st.info("Accounting module under construction.")
+    st.info("Accounting module is currently under development.")
 else:
     st.warning("Workspace not yet implemented.")
