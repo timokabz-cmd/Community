@@ -1,15 +1,8 @@
 import streamlit as st
-import sys
-import os
-
-# Ensure the root directory is in the path so we can import 'database'
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from database import get_db_connection
+from modules.database import get_db_connection
 
 def verify_user(username, password):
     conn = get_db_connection()
-    # Query for the user
     user = conn.execute("SELECT * FROM users WHERE username = ? AND password = ?", 
                         (username, password)).fetchone()
     conn.close()
