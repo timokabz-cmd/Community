@@ -1,13 +1,9 @@
 import sqlite3
-
-def get_db_connection():
-    # Connect to the financial database
-    conn = sqlite3.connect('finance_system.db')
-    conn.row_factory = sqlite3.Row  # Allows accessing columns by name
-    return conn
+import os
 
 def init_db():
-    conn = get_db_connection()
+    # This ensures the database is created if it doesn't exist
+    conn = sqlite3.connect('finance_system.db')
     cursor = conn.cursor()
     
     # 1. Members Table
@@ -24,11 +20,11 @@ def init_db():
                     (id INTEGER PRIMARY KEY, amount REAL, narration TEXT, operator_name TEXT, 
                      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
                      
-    # 4. Users Table (New for Authentication)
+    # 4. Users Table (The missing piece)
     cursor.execute('''CREATE TABLE IF NOT EXISTS users 
                     (id INTEGER PRIMARY KEY, username TEXT UNIQUE, password TEXT, role TEXT)''')
     
-    # Create a default admin user if the table is empty
+    # Create default admin
     cursor.execute("SELECT count(*) FROM users")
     if cursor.fetchone()[0] == 0:
         cursor.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", 
