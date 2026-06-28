@@ -1,28 +1,24 @@
 import streamlit as st
-from modules.auth import check_password
-from modules.database import init_db
+from auth import check_password
+from database import init_db
 
-# 1. GATEKEEPER: Stop execution if not logged in
+# 1. Page Configuration (Must be first)
+st.set_page_config(layout="wide", page_title="CommunityFinanceOS", page_icon="🏛️")
+
+# 2. Initialize Database
+init_db()
+
+# 3. Gatekeeper: Stop execution if not logged in
 if not check_password():
     st.stop()
 
-# 2. APP INITIALIZATION
-init_db()
-
-# 3. Imports for other modules
-from modules.dashboard import render_dashboard
-from modules.customers import render_customers
-from modules.loans import render_loans
-from modules.collections import render_collections
-from modules.accounting import render_accounting
-from modules.reporting import render_reporting
-
-# 4. Page Configuration
-st.set_page_config(
-    layout="wide", 
-    page_title="CommunityFinanceOS",
-    page_icon="🏛️"
-)
+# 4. Imports for other modules
+from dashboard import render_dashboard
+from customers import render_customers
+from loans import render_loans
+from collections import render_collections
+from accounting import render_accounting
+from reporting import render_reporting
 
 # 5. Sidebar Navigation
 st.sidebar.title("🏛️ CommunityFinanceOS")
