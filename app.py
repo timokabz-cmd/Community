@@ -1,21 +1,12 @@
 import streamlit as st
-from database import init_db, get_db_connection
+from database import init_db
+from modules.customers import render_customers
 
-# Initialize the database
 init_db()
-
-# Main Application Layout
-st.set_page_config(layout="wide", page_title="SaccoOS")
 st.title("🏛️ CommunityFinanceOS")
+choice = st.sidebar.selectbox("Workspace", ["Dashboard", "Customers"])
 
-# Navigation
-menu = ["Dashboard", "Customers", "Accounting"]
-choice = st.sidebar.selectbox("Select Workspace", menu)
-
-if choice == "Dashboard":
-    st.subheader("Executive Management Overview")
-    # Example of using the connection
-    conn = get_db_connection()
-    # Add your dashboard display logic here
-    st.write("System initialized and ready.")
-    conn.close()
+if choice == "Customers":
+    render_customers()
+else:
+    st.write("Dashboard loading...")
