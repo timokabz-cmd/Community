@@ -4,6 +4,7 @@ from modules.dashboard import render_dashboard
 from modules.customers import render_customers
 from modules.loans import render_loans
 from modules.collections import render_collections
+from modules.accounting import render_accounting
 
 # 1. Initialize the system database once
 init_db()
@@ -39,9 +40,7 @@ elif choice == "Collections":
     render_collections()
 
 elif choice == "Accounting":
-    # Placeholder until you build the accounting logic
-    st.subheader("💼 Financial Ledger")
-    st.info("The Accounting engine is currently being wired to the ledger service.")
+    render_accounting()
 
 else:
     st.warning("Workspace not yet implemented.")
