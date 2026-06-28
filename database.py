@@ -30,14 +30,14 @@ def init_db():
         CREATE TABLE IF NOT EXISTS loans (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             member_id INTEGER,
-            loan_type TEXT NOT NULL, -- Business, Agriculture, Emergency, Education
+            loan_type TEXT NOT NULL,
             amount_disbursed REAL NOT NULL,
             amount_owed REAL NOT NULL,
             amount_paid REAL DEFAULT 0.0,
             date_issued TEXT,
             due_date TEXT NOT NULL,
-            status TEXT DEFAULT 'Pending', -- Pending, Approved, Active, Defaulted, Cleared
-            risk_level TEXT DEFAULT 'Low', -- Low, Medium, High
+            status TEXT DEFAULT 'Pending',
+            risk_level TEXT DEFAULT 'Low',
             collateral_details TEXT,
             FOREIGN KEY(member_id) REFERENCES members(id)
         )
@@ -68,10 +68,10 @@ def init_db():
         ])
         
         cursor.executemany("INSERT INTO loans (member_id, loan_type, amount_disbursed, amount_owed, amount_paid, date_issued, due_date, status, risk_level, collateral_details) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [
-            (1, "Business", 1500000, 1100000, 400000, "2026-01-10", "2026-07-10", "Active", "Low", "Shop Inventory Kraal Receipt"),
-            (2, "Agriculture", 3000000, 3000000, 0, "2026-02-15", "2026-05-15", "Active", "High", "Kibanja Land Agreement"),
-            (3, "Emergency", 400000, 50000, 350000, "2026-06-01", "2026-07-01", "Active", "Medium", "Logbook Copy"),
-            (4, "Development", 5000000, 5000000, 0, None, "2027-06-28", "Pending", "Low", "Land Title Deed")
+            (1, "Business Expansion", 1500000, 1100000, 400000, "2026-01-10", "2026-07-10", "Active", "Low", "Shop Inventory Kraal Receipt"),
+            (2, "Agricultural Input", 3000000, 3000000, 0, "2026-02-15", "2026-05-15", "Active", "High", "Kibanja Land Agreement"),
+            (3, "Emergency Support Line", 400000, 50000, 350000, "2026-06-01", "2026-07-01", "Active", "Medium", "Logbook Copy"),
+            (4, "Asset Development", 5000000, 5000000, 0, None, "2027-06-28", "Pending", "Low", "Land Title Deed")
         ])
         
     conn.commit()
@@ -96,7 +96,7 @@ def add_new_member(name, phone, national_id, initial_savings):
 def issue_loan_request(member_id, loan_type, amount, collateral, duration_months):
     conn = get_db_connection()
     cursor = conn.cursor()
-    due_date = datetime.now().strftime("%Y-%m-%d") # Placeholder calculation logic
+    due_date = datetime.now().strftime("%Y-%m-%d")
     cursor.execute('''
         INSERT INTO loans (member_id, loan_type, amount_disbursed, amount_owed, status, risk_level, collateral_details, due_date)
         VALUES (?, ?, ?, ?, 'Pending', 'Low', ?, ?)
