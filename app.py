@@ -1,8 +1,13 @@
+import sys
+import os
+# Force the current working directory into Python's path to resolve import errors
+sys.path.append(os.getcwd())
+
 import streamlit as st
 from auth import check_password
 from database import init_db
 
-# 1. Page Configuration (Must be first)
+# 1. Page Configuration
 st.set_page_config(layout="wide", page_title="CommunityFinanceOS", page_icon="🏛️")
 
 # 2. Initialize Database
@@ -12,7 +17,7 @@ init_db()
 if not check_password():
     st.stop()
 
-# 4. Imports for other modules
+# 4. Imports for modules now located in the root
 from dashboard import render_dashboard
 from customers import render_customers
 from loans import render_loans
