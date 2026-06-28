@@ -1,8 +1,9 @@
 import streamlit as st
-from modules.database import get_db_connection
+from database import get_db_connection
 
 def verify_user(username, password):
     conn = get_db_connection()
+    # Simple check - ensure your table contains 'username', 'password', and 'role'
     user = conn.execute("SELECT * FROM users WHERE username = ? AND password = ?", 
                         (username, password)).fetchone()
     conn.close()
@@ -23,6 +24,7 @@ def check_password():
         if st.button("Login"):
             user = verify_user(user_input, pwd_input)
             if user:
+                # user is a Row object; access by name or index
                 st.session_state.authenticated = True
                 st.session_state.role = user['role']
                 st.session_state.user = user['username']
