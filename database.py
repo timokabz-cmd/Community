@@ -1,2 +1,0 @@
-connections.py
-schema.py
