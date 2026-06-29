@@ -7,17 +7,19 @@ from modules import (
 )
 from seed_data import seed_demo_data
 
+# 1. Page config must run first
 st.set_page_config(layout="wide", page_title="CommunityFinanceOS", page_icon="🏛️")
 
-# --- Added for Modern UI Theme ---
+# 2. Inject the custom modern UI styles immediately after page config
 from style import apply_styles
 apply_styles()
-# ---------------------------------
 
+# 3. Initialize database and core settings
 init_db()
 ensure_admin_account()
 seed_demo_data()
 
+# 4. Authentication Gateway
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
@@ -36,6 +38,7 @@ if not st.session_state.authenticated:
     st.caption("Default login: admin / admin123. For a permanent custom admin password, set ADMIN_PASSWORD in this app's Secrets instead of changing it in-app.")
     st.stop()
 
+# 5. Account Settings Rendering Function
 def render_account_settings():
     st.write("#### Change Password")
     if st.session_state.user == 'admin':
@@ -55,6 +58,7 @@ def render_account_settings():
             update_password(st.session_state.user, new_pwd)
             st.success("Password updated. Use it next time you log in.")
 
+# 6. Sidebar Navigation Setup
 st.sidebar.title("🏛️ CommunityFinanceOS")
 st.sidebar.write(f"Logged in as: **{st.session_state.user}**")
 
@@ -80,5 +84,6 @@ if st.sidebar.button("Logout"):
     st.session_state.authenticated = False
     st.rerun()
 
+# 7. Main Page Content Render
 st.header(choice)
 PAGES[choice]()
