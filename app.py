@@ -8,6 +8,12 @@ from modules import (
 from seed_data import seed_demo_data
 
 st.set_page_config(layout="wide", page_title="CommunityFinanceOS", page_icon="🏛️")
+
+# --- Added for Modern UI Theme ---
+from style import apply_styles
+apply_styles()
+# ---------------------------------
+
 init_db()
 ensure_admin_account()
 seed_demo_data()
