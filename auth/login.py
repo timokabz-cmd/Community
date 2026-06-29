@@ -18,9 +18,5 @@ def verify_user(username, password):
     _, digest = hash_password(password, user['salt'])
     return user if hmac.compare_digest(digest, user['password_hash']) else None
 
-def update_password(username, new_password):
-    conn = get_db_connection()
-    salt, pw_hash = hash_password(new_password)
-    conn.execute("UPDATE users SET password_hash = ?, salt = ? WHERE username = ?", (pw_hash, salt, username))
-    conn.commit()
-    conn.close()
+def check_session():
+    return st.session_state.get('authenticated', False)
