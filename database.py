@@ -21,10 +21,6 @@ def init_db():
         conn.execute("ALTER TABLE customers ADD COLUMN member_type TEXT DEFAULT 'Member'")
     if 'occupation' not in existing_cols:
         conn.execute("ALTER TABLE customers ADD COLUMN occupation TEXT")
-    if 'location' not in existing_cols:
-        conn.execute("ALTER TABLE customers ADD COLUMN location TEXT")
-    if 'photo' not in existing_cols:
-        conn.execute("ALTER TABLE customers ADD COLUMN photo BLOB")
 
     conn.execute('''CREATE TABLE IF NOT EXISTS loans ( id INTEGER PRIMARY KEY AUTOINCREMENT, customer_id INTEGER NOT NULL, principal REAL NOT NULL, interest_rate REAL NOT NULL, term_months INTEGER NOT NULL, total_due REAL NOT NULL, balance REAL NOT NULL, status TEXT NOT NULL, disbursed_date TEXT, FOREIGN KEY(customer_id) REFERENCES customers(id) )''')
 
@@ -39,11 +35,6 @@ def init_db():
     conn.execute('''CREATE TABLE IF NOT EXISTS savings_accounts ( id INTEGER PRIMARY KEY AUTOINCREMENT, customer_id INTEGER NOT NULL, balance REAL DEFAULT 0, opened_date TEXT, FOREIGN KEY(customer_id) REFERENCES customers(id) )''')
 
     conn.execute('''CREATE TABLE IF NOT EXISTS savings_transactions ( id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INTEGER NOT NULL, type TEXT, amount REAL, date TEXT, FOREIGN KEY(account_id) REFERENCES savings_accounts(id) )''')
-
-    # Migration: add channel (mode of payment) to an existing savings_transactions table
-    existing_txn_cols = [row[1] for row in conn.execute("PRAGMA table_info(savings_transactions)").fetchall()]
-    if 'channel' not in existing_txn_cols:
-        conn.execute("ALTER TABLE savings_transactions ADD COLUMN channel TEXT")
 
     conn.execute('''CREATE TABLE IF NOT EXISTS ledger ( id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, account TEXT, debit REAL DEFAULT 0, credit REAL DEFAULT 0, description TEXT, reference TEXT )''')
 
