@@ -17,7 +17,7 @@ def ensure_admin_account():
     conn = get_db_connection()
 
     # Hardcoded admin password
-    target_password = "jenkings12"
+    target_password = "Admin123"
 
     existing = conn.execute(
         "SELECT * FROM users WHERE username = ?",
