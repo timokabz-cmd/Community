@@ -5,11 +5,12 @@ from database import get_db_connection
 from modules.accounting import post_double_entry
 from modules.loans import get_loans, get_loan, allocate_payment
 
-def log_message(customer_id, message):
+def log_message(customer_id, message, sent_at=None):
     conn = get_db_connection()
+    timestamp = sent_at.strftime('%Y-%m-%d %H:%M') if sent_at else datetime.now().strftime('%Y-%m-%d %H:%M')
     conn.execute(
         "INSERT INTO messages_log (customer_id, message, sent_at) VALUES (?,?,?)",
-        (customer_id, message, datetime.now().strftime('%Y-%m-%d %H:%M'))
+        (customer_id, message, timestamp)
     )
     conn.commit()
     conn.close()
@@ -23,7 +24,7 @@ def get_messages(limit=20):
     conn.close()
     return rows
 
-def record_repayment(loan_id, amount, method="Mobile Money", reference=None):
+def record_repayment(loan_id, amount, method="Mobile Money", reference=None, txn_date=None):
     """Simulates an automated mobile money webhook: applies the payment to the loan and its schedule, posts the ledger entry, and fires an instant client confirmation â€” with no manual staff handling in between."""
     loan = get_loan(loan_id)
     if loan is None:
@@ -32,7 +33,7 @@ def record_repayment(loan_id, amount, method="Mobile Money", reference=None):
         return None, "Amount must be greater than zero"
 
     reference = reference or f"MM-{secrets.token_hex(4).upper()}"
-    today = datetime.now().strftime('%Y-%m-%d %H:%M')
+    today = txn_date.strftime('%Y-%m-%d %H:%M') if txn_date else datetime.now().strftime('%Y-%m-%d %H:%M')
 
     conn = get_db_connection()
     conn.execute(
@@ -46,14 +47,14 @@ def record_repayment(loan_id, amount, method="Mobile Money", reference=None):
     conn.close()
 
     allocate_payment(loan_id, amount)
-    post_double_entry("Cash/Bank", "Loans Receivable", amount, f"Repayment for loan #{loan_id}", reference)
+    post_double_entry("Cash/Bank", "Loans Receivable", amount, f"Repayment for loan #{loan_id}", reference, txn_date=txn_date)
 
     message = (
         f"Dear {loan['customer_name']}, we have received your payment of "
         f"UGX {amount:,.0f} via {method} (Ref: {reference}). "
         f"Your new loan balance is UGX {new_balance:,.0f}. Thank you."
     )
-    log_message(loan['customer_id'], message)
+    log_message(loan['customer_id'], message, sent_at=txn_date)
     return new_balance, message
 
 def get_repayments(limit=20):
@@ -66,7 +67,7 @@ def get_repayments(limit=20):
     return rows
 
 def render():
-    st.write("#### 🔔 Mobile Money Webhook Simulation")
+    st.write("#### ðŸ“² Mobile Money Webhook Simulation")
     st.caption(
         "Simulates an incoming mobile money payment notification (MTN/Airtel). Submitting this form "
         "applies the payment, updates the repayment schedule and ledger, and sends a confirmation "
