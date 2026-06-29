@@ -41,7 +41,7 @@ def render():
     col3.metric("Outstanding Loans", f"UGX {outstanding:,.0f}")
     col4.metric("Total Savings Held", f"UGX {total_savings:,.0f}")
 
-    st.write("#### ðŸ”” Upcoming Repayments (next 7 days)")
+    st.write("#### 🔔 Upcoming Repayments (next 7 days)")
     upcoming = get_upcoming_installments(days=7)
     if upcoming:
         st.dataframe(
