@@ -33,8 +33,10 @@ def apply_styles() -> None:
             background: #F0F4F8;
         }
 
-        /* Hide default Streamlit chrome */
-        #MainMenu, footer, header { visibility: hidden; }
+        /* Hide default Streamlit chrome BUT keep the mobile header menu button */
+        #MainMenu, footer { visibility: hidden; }
+        [data-testid="stHeaderActionElements"] { visibility: hidden; }
+        header { background: transparent !important; }
 
         /* ── Sidebar ────────────────────────────────────────────── */
         [data-testid="stSidebar"] {
