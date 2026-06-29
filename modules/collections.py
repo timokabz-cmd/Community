@@ -66,7 +66,7 @@ def get_repayments(limit=20):
     return rows
 
 def render():
-    st.write("#### ðŸ“² Mobile Money Webhook Simulation")
+    st.write("#### 🔔 Mobile Money Webhook Simulation")
     st.caption(
         "Simulates an incoming mobile money payment notification (MTN/Airtel). Submitting this form "
         "applies the payment, updates the repayment schedule and ledger, and sends a confirmation "
