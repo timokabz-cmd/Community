@@ -27,6 +27,7 @@ if not st.session_state.authenticated:
     st.subheader("🔒 Login Required")
     user_input = st.text_input("Username")
     pwd_input = st.text_input("Password", type="password")
+
     if st.button("Login"):
         user = verify_user(user_input, pwd_input)
         if user:
@@ -35,20 +36,24 @@ if not st.session_state.authenticated:
             st.rerun()
         else:
             st.error("Invalid username or password")
-    st.caption("Default login: admin / admin123. For a permanent custom admin password, set ADMIN_PASSWORD in this app's Secrets instead of changing it in-app.")
+
+    # Removed default login credentials
+    st.caption("Please log in to continue.")
     st.stop()
 
 # 5. Account Settings Rendering Function
 def render_account_settings():
     st.write("#### Change Password")
+
     if st.session_state.user == 'admin':
-        st.warning(
-            "The 'admin' account always syncs to the ADMIN_PASSWORD secret when the app restarts "
-            "(Streamlit Cloud → Manage app → Settings → Secrets). Changing it here will work until "
-            "the next restart, then it reverts. For a permanent change, update the secret instead."
+        st.info(
+            "The admin password is hardcoded in auth.py. "
+            "To change it permanently, edit auth.py and redeploy the app."
         )
+
     new_pwd = st.text_input("New password", type="password")
     confirm_pwd = st.text_input("Confirm new password", type="password")
+
     if st.button("Update password"):
         if not new_pwd:
             st.error("Password cannot be empty.")
