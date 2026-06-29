@@ -30,14 +30,27 @@ def get_customer_profile(customer_id):
         """SELECT guarantors.*, loans.id as loan_ref FROM guarantors JOIN loans ON guarantors.loan_id = loans.id WHERE loans.customer_id = ?""",
         (customer_id,)
     ).fetchall()
-    collateral_held = conn.execute(
-        """SELECT collateral.*, loans.id as loan_ref FROM collateral JOIN loans ON collateral.loan_id = loans.id WHERE loans.customer_id = ?""",
-        (customer_id,)
-    ).fetchall()
     conn.close()
-    return customer, loans, savings, guarantors_given, collateral_held
+    return customer, loans, savings, guarantors_given
 
 def render():
+    st.write("#### 🌱 Demo Data")
+    st.caption(
+        "Loads 20 sample profiles — Members and Outsiders — with savings, loans at different "
+        "repayment stages (on-track, overdue, fully closed), guarantors, and collateral. "
+        "Safe to click more than once — it skips any profile already loaded."
+    )
+    if st.button("Load 20 Demo Profiles"):
+        from seed_data import seed_demo_data
+        created, skipped = seed_demo_data()
+        if created:
+            st.success(f"Loaded {created} new demo profile(s).")
+        if skipped:
+            st.info(f"Skipped {skipped} profile(s) already present.")
+        if not created and not skipped:
+            st.warning("Nothing to load.")
+
+    st.write("---")
     st.write("#### 👥 Manage Staff & Admin Users")
     with st.form("add_user_form", clear_on_submit=True):
         new_username = st.text_input("New username")
@@ -67,15 +80,10 @@ def render():
 
     customer_map = {f"{c['name']} ({c['phone']})": c['id'] for c in customers}
     choice = st.selectbox("Select customer", list(customer_map.keys()))
-    customer, loans, savings, guarantors_given, collateral_held = get_customer_profile(customer_map[choice])
+    customer, loans, savings, guarantors_given = get_customer_profile(customer_map[choice])
 
-    profile_col1, profile_col2 = st.columns([1, 4])
-    with profile_col1:
-        if customer['photo']:
-            st.image(customer['photo'], width=100)
-    with profile_col2:
-        st.write(f"**{customer['name']}** — {customer['member_type']} | {customer['occupation'] or 'No occupation set'}")
-        st.write(f"📞 {customer['phone']} | 🆔 {customer['national_id'] or 'N/A'} | 📍 {customer['location'] or 'N/A'} | Joined {customer['created_at']}")
+    st.write(f"**{customer['name']}** — {customer['member_type']} | {customer['occupation'] or 'No occupation set'}")
+    st.write(f"📞 {customer['phone']} | 🆔 {customer['national_id'] or 'N/A'} | Joined {customer['created_at']}")
 
     if savings:
         st.write(f"💰 **Savings Balance:** UGX {savings['balance']:,.0f}")
@@ -98,13 +106,3 @@ def render():
             [{"Loan ID": g['loan_ref'], "Guarantor": g['name'], "Phone": g['phone']} for g in guarantors_given],
             use_container_width=True
         )
-
-    if collateral_held:
-        st.write("**Collateral Held Against This Customer's Loans:**")
-        st.dataframe(
-            [{"Loan ID": c['loan_ref'], "Description": c['description'],
-              "Estimated Value": c['estimated_value'], "Status": c['status']} for c in collateral_held],
-            use_container_width=True
-        )
-    else:
-        st.caption("No collateral on record for this customer.")
