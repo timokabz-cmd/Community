@@ -30,8 +30,12 @@ def get_customer_profile(customer_id):
         """SELECT guarantors.*, loans.id as loan_ref FROM guarantors JOIN loans ON guarantors.loan_id = loans.id WHERE loans.customer_id = ?""",
         (customer_id,)
     ).fetchall()
+    collateral_held = conn.execute(
+        """SELECT collateral.*, loans.id as loan_ref FROM collateral JOIN loans ON collateral.loan_id = loans.id WHERE loans.customer_id = ?""",
+        (customer_id,)
+    ).fetchall()
     conn.close()
-    return customer, loans, savings, guarantors_given
+    return customer, loans, savings, guarantors_given, collateral_held
 
 def render():
     st.write("#### 👥 Manage Staff & Admin Users")
@@ -63,10 +67,15 @@ def render():
 
     customer_map = {f"{c['name']} ({c['phone']})": c['id'] for c in customers}
     choice = st.selectbox("Select customer", list(customer_map.keys()))
-    customer, loans, savings, guarantors_given = get_customer_profile(customer_map[choice])
+    customer, loans, savings, guarantors_given, collateral_held = get_customer_profile(customer_map[choice])
 
-    st.write(f"**{customer['name']}** — {customer['member_type']} | {customer['occupation'] or 'No occupation set'}")
-    st.write(f"📞 {customer['phone']} | 🆔 {customer['national_id'] or 'N/A'} | Joined {customer['created_at']}")
+    profile_col1, profile_col2 = st.columns([1, 4])
+    with profile_col1:
+        if customer['photo']:
+            st.image(customer['photo'], width=100)
+    with profile_col2:
+        st.write(f"**{customer['name']}** — {customer['member_type']} | {customer['occupation'] or 'No occupation set'}")
+        st.write(f"📞 {customer['phone']} | 🆔 {customer['national_id'] or 'N/A'} | 📍 {customer['location'] or 'N/A'} | Joined {customer['created_at']}")
 
     if savings:
         st.write(f"💰 **Savings Balance:** UGX {savings['balance']:,.0f}")
@@ -89,3 +98,13 @@ def render():
             [{"Loan ID": g['loan_ref'], "Guarantor": g['name'], "Phone": g['phone']} for g in guarantors_given],
             use_container_width=True
         )
+
+    if collateral_held:
+        st.write("**Collateral Held Against This Customer's Loans:**")
+        st.dataframe(
+            [{"Loan ID": c['loan_ref'], "Description": c['description'],
+              "Estimated Value": c['estimated_value'], "Status": c['status']} for c in collateral_held],
+            use_container_width=True
+        )
+    else:
+        st.caption("No collateral on record for this customer.")
