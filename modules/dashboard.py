@@ -3,9 +3,8 @@ import streamlit as st
 from database.connection import get_db_connection
 
 def render():
-    st.write("#### 🏛️ Dashboard")
+    st.write("### 🏛️ Dashboard")
     conn = get_db_connection()
-    # Your logic for stats and metrics goes here
-    st.info("Dashboard loaded from modules folder.")
+    # Add your query logic here later
+    st.info("Dashboard module is now connected!")
     conn.close()
-
