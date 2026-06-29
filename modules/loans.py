@@ -12,19 +12,24 @@ def add_months(source_date, months):
     day = min(source_date.day, calendar.monthrange(year, month)[1])
     return date(year, month, day)
 
-def issue_loan(customer_id, principal, interest_rate, term_months):
+def issue_loan(customer_id, principal, interest_rate, term_months, disbursed_date=None):
     total_due = round(principal * (1 + interest_rate / 100), 2)
+    if disbursed_date is None:
+        disbursed = datetime.now().date()
+    elif isinstance(disbursed_date, str):
+        disbursed = datetime.strptime(disbursed_date, '%Y-%m-%d').date()
+    else:
+        disbursed = disbursed_date
+
     conn = get_db_connection()
-    today_str = datetime.now().strftime('%Y-%m-%d')
     cursor = conn.execute(
         """INSERT INTO loans (customer_id, principal, interest_rate, term_months, total_due, balance, status, disbursed_date) VALUES (?,?,?,?,?,?,?,?)""",
-        (customer_id, principal, interest_rate, term_months, total_due, total_due, 'Active', today_str)
+        (customer_id, principal, interest_rate, term_months, total_due, total_due, 'Active', disbursed.strftime('%Y-%m-%d'))
     )
     loan_id = cursor.lastrowid
 
     # Generate an equal-installment repayment schedule
     installment = round(total_due / term_months, 2)
-    disbursed = datetime.now().date()
     running_total = 0
     for i in range(1, term_months + 1):
         due_date = add_months(disbursed, i)
@@ -40,7 +45,7 @@ def issue_loan(customer_id, principal, interest_rate, term_months):
     conn.commit()
     conn.close()
 
-    post_double_entry("Loans Receivable", "Cash/Bank", principal, f"Loan #{loan_id} disbursed", f"LOAN-{loan_id}")
+    post_double_entry("Loans Receivable", "Cash/Bank", principal, f"Loan #{loan_id} disbursed", f"LOAN-{loan_id}", txn_date=disbursed)
     return loan_id
 
 def get_loans(status=None):
@@ -106,11 +111,6 @@ def allocate_payment(loan_id, amount):
     conn.close()
 
 def render():
-    # Imported here (not at module top) to avoid a circular import: guarantors.py and
-    # collateral.py both import get_loans from this module.
-    from modules.guarantors import add_guarantor, get_guarantors
-    from modules.collateral import add_collateral, get_collateral
-
     customers = get_customers()
     st.write("#### Issue a New Loan")
     if not customers:
@@ -122,17 +122,6 @@ def render():
             principal = st.number_input("Principal amount (UGX)", min_value=0.0, step=10000.0)
             interest_rate = st.number_input("Flat interest rate (%)", min_value=0.0, step=1.0, value=10.0)
             term_months = st.number_input("Term (months)", min_value=1, step=1, value=3)
-
-            st.write("**Guarantor (optional)**")
-            g_name = st.text_input("Guarantor full name")
-            g_phone = st.text_input("Guarantor phone number")
-            g_nid = st.text_input("Guarantor National ID")
-            g_relationship = st.text_input("Relationship to borrower")
-
-            st.write("**Collateral (optional)**")
-            c_description = st.text_input("Collateral description (e.g. 'Land title, Plot 12, Mukono')")
-            c_value = st.number_input("Estimated value (UGX)", min_value=0.0, step=10000.0, key="collateral_value")
-
             submitted = st.form_submit_button("Disburse Loan")
             if submitted:
                 if principal <= 0:
@@ -140,12 +129,6 @@ def render():
                 else:
                     loan_id = issue_loan(customer_map[customer_choice], principal, interest_rate, int(term_months))
                     st.success(f"Loan #{loan_id} disbursed for {customer_choice}, with a {int(term_months)}-month repayment schedule.")
-                    if g_name and g_phone:
-                        add_guarantor(loan_id, g_name, g_phone, g_nid, g_relationship)
-                        st.success(f"Guarantor '{g_name}' attached to Loan #{loan_id}.")
-                    if c_description:
-                        add_collateral(loan_id, c_description, c_value)
-                        st.success(f"Collateral registered against Loan #{loan_id}.")
 
     st.write("#### All Loans")
     loans = get_loans()
@@ -160,13 +143,10 @@ def render():
         use_container_width=True
     )
 
-    st.write("#### View Loan Details")
+    st.write("#### View Repayment Schedule")
     loan_map = {f"Loan #{l['id']} — {l['customer_name']}": l['id'] for l in loans}
     choice = st.selectbox("Select a loan", list(loan_map.keys()))
-    selected_loan_id = loan_map[choice]
-
-    schedule = get_schedule(selected_loan_id)
-    st.write("**Repayment Schedule**")
+    schedule = get_schedule(loan_map[choice])
     if schedule:
         st.dataframe(
             [{"Installment": s['installment_no'], "Due Date": s['due_date'], "Due Amount": s['due_amount'],
@@ -175,25 +155,3 @@ def render():
         )
     else:
         st.info("No schedule found for this loan.")
-
-    st.write("**Guarantor(s)**")
-    guarantors = get_guarantors(selected_loan_id)
-    if guarantors:
-        st.dataframe(
-            [{"Name": g['name'], "Phone": g['phone'], "National ID": g['national_id'],
-              "Relationship": g['relationship']} for g in guarantors],
-            use_container_width=True
-        )
-    else:
-        st.caption("No guarantor on file for this loan.")
-
-    st.write("**Collateral**")
-    collateral_items = get_collateral(selected_loan_id)
-    if collateral_items:
-        st.dataframe(
-            [{"Description": c['description'], "Estimated Value": c['estimated_value'],
-              "Status": c['status']} for c in collateral_items],
-            use_container_width=True
-        )
-    else:
-        st.caption("No collateral on file for this loan.")
