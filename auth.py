@@ -11,13 +11,16 @@ def hash_password(password, salt=None):
     return salt, digest
 
 def ensure_admin_account():
+    """Keeps the 'admin' account's password in sync with ADMIN_PASSWORD in Secrets every time the app starts. This matters because Streamlit Community Cloud wipes the local SQLite file whenever the app restarts or wakes from sleep — so a password changed only via 'Change Password' in the app won't survive that. Whatever is in Secrets always wins."""
     conn = get_db_connection()
+    target_password = st.secrets.get("ADMIN_PASSWORD", "admin123")
     existing = conn.execute("SELECT * FROM users WHERE username = ?", ('admin',)).fetchone()
+    salt, pw_hash = hash_password(target_password)
     if existing is None:
-        default_password = st.secrets.get("ADMIN_PASSWORD", "admin123")
-        salt, pw_hash = hash_password(default_password)
         conn.execute('INSERT INTO users VALUES (?, ?, ?, ?)', ('admin', pw_hash, salt, 'admin'))
-        conn.commit()
+    else:
+        conn.execute('UPDATE users SET password_hash = ?, salt = ? WHERE username = ?', (pw_hash, salt, 'admin'))
+    conn.commit()
     conn.close()
 
 def verify_user(username, password):
