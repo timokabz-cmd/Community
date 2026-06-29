@@ -3,6 +3,7 @@ import requests
 from database import get_db_connection
 from modules.analytics import compute_risk_scores, get_category_breakdown
 from modules.loans import get_upcoming_installments
+from modules.customers import get_customers
 
 def build_data_summary():
     """Pulls cross-referenced stats from customers, loans, savings, and risk data into a compact text block — this is what powers both the rule-based insights and the AI Q&A context."""
@@ -101,9 +102,66 @@ def ask_ai(question, context):
     except Exception as e:
         return None, f"AI request failed: {e}"
 
+def get_customer_insight(customer_id):
+    """Pulls a focused profile for a single customer — used by the name search below."""
+    conn = get_db_connection()
+    customer = conn.execute("SELECT * FROM customers WHERE id=?", (customer_id,)).fetchone()
+    savings = conn.execute("SELECT balance FROM savings_accounts WHERE customer_id=?", (customer_id,)).fetchone()
+    loans = conn.execute("SELECT * FROM loans WHERE customer_id=?", (customer_id,)).fetchall()
+    conn.close()
+
+    active_loans = [l for l in loans if l['status'] == 'Active']
+    outstanding = sum(l['balance'] for l in active_loans)
+
+    risk_scores = compute_risk_scores()
+    active_loan_ids = {l['id'] for l in active_loans}
+    my_risk = [r for r in risk_scores if r['loan_id'] in active_loan_ids]
+
+    return {
+        'customer': customer,
+        'savings_balance': savings['balance'] if savings else None,
+        'loans': loans,
+        'active_loans': active_loans,
+        'outstanding': outstanding,
+        'risk': my_risk,
+    }
+
 def render():
     st.write("#### 🤖 AI Insights")
     st.caption("Cross-references customers, loans, savings, and risk data across the whole system.")
+
+    st.write("#### 🔍 Search Customer")
+    name_query = st.text_input("Search by customer name")
+    if name_query:
+        matches = [c for c in get_customers() if name_query.lower() in c['name'].lower()]
+        if not matches:
+            st.warning(f"No customer found matching '{name_query}'.")
+        else:
+            if len(matches) > 1:
+                match_map = {f"{c['name']} ({c['phone']})": c['id'] for c in matches}
+                pick = st.selectbox("Multiple matches — pick one", list(match_map.keys()))
+                customer_id = match_map[pick]
+            else:
+                customer_id = matches[0]['id']
+
+            info = get_customer_insight(customer_id)
+            c = info['customer']
+            st.write(f"**{c['name']}** — {c['member_type']} | {c['occupation'] or 'No occupation set'}")
+            st.write(f"📞 {c['phone']} | 📍 {c['location'] or 'Location not set'}")
+            if info['savings_balance'] is not None:
+                st.write(f"💰 Savings balance: UGX {info['savings_balance']:,.0f}")
+            else:
+                st.write("💰 No savings account.")
+            st.write(f"📄 Active loans: {len(info['active_loans'])} | Outstanding: UGX {info['outstanding']:,.0f}")
+            if info['risk']:
+                for r in info['risk']:
+                    st.warning(
+                        f"⚠️ Loan #{r['loan_id']} — Risk: {r['risk']}, "
+                        f"{r['missed_installments']} missed installment(s), {r['days_overdue']} days overdue."
+                    )
+            elif info['active_loans']:
+                st.success("✅ No missed installments on active loans.")
+        st.write("---")
 
     summary, insights = generate_local_insights()
     for line in insights:
