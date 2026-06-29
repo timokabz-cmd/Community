@@ -33,10 +33,30 @@ def apply_styles() -> None:
             background: #F0F4F8;
         }
 
-        /* Hide default Streamlit chrome BUT keep the mobile header menu button */
+        /* ── Hide Streamlit chrome selectively ──────────────────── */
+        /* Only hide footer and the main menu icon */
         #MainMenu, footer { visibility: hidden; }
-        [data-testid="stHeaderActionElements"] { visibility: hidden; }
         header { background: transparent !important; }
+
+        /* FIX: Do NOT hide stHeaderActionElements broadly — in newer
+           Streamlit versions the sidebar collapse ">" toggle lives inside
+           that container. Hide only the deploy/toolbar sub-elements. */
+        [data-testid="stToolbar"]     { visibility: hidden; }
+        [data-testid="stDecoration"]  { visibility: hidden; }
+
+        /* ── Always keep sidebar toggle visible ─────────────────── */
+        /* collapsedControl is the ">" button that reopens the sidebar */
+        [data-testid="collapsedControl"] {
+            visibility: visible !important;
+            display:     flex    !important;
+            opacity:     1       !important;
+        }
+        /* Also keep the mobile hamburger button in the header visible */
+        [data-testid="stHeader"] button {
+            visibility: visible !important;
+            display:     flex    !important;
+            opacity:     1       !important;
+        }
 
         /* ── Sidebar ────────────────────────────────────────────── */
         [data-testid="stSidebar"] {
