@@ -5,10 +5,12 @@ from modules import (
     dashboard, customers, savings, loans, guarantors, collateral,
     collections, accounting, reports, analytics, administration, ai_insights
 )
+from seed_data import seed_demo_data
 
 st.set_page_config(layout="wide", page_title="CommunityFinanceOS", page_icon="🏛️")
 init_db()
 ensure_admin_account()
+seed_demo_data()
 
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
