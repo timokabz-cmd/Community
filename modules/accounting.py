@@ -2,9 +2,10 @@ import streamlit as st
 from datetime import datetime
 from database import get_db_connection
 
-def post_double_entry(account_debit, account_credit, amount, description, reference=None):
+def post_double_entry(account_debit, account_credit, amount, description, reference=None, txn_date=None):
+    """Posts a balanced debit/credit pair to the ledger for any transaction. txn_date (a date/datetime) lets seeded or backdated transactions carry a realistic historical timestamp instead of always using 'now'."""
     conn = get_db_connection()
-    today = datetime.now().strftime('%Y-%m-%d %H:%M')
+    today = txn_date.strftime('%Y-%m-%d %H:%M') if txn_date else datetime.now().strftime('%Y-%m-%d %H:%M')
     conn.execute(
         "INSERT INTO ledger (date, account, debit, credit, description, reference) VALUES (?,?,?,?,?,?)",
         (today, account_debit, amount, 0, description, reference)
