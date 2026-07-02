@@ -1,6 +1,23 @@
 [theme]
-primaryColor = "#00A86B"
-backgroundColor = "#F0F4F8"
-secondaryBackgroundColor = "#FFFFFF"
-textColor = "#1A1A2E"
-font = "sans serif"
+base = "light"
+primaryColor = "#C99A3B"
+backgroundColor = "#FAF6EE"
+secondaryBackgroundColor = "#F1E9D8"
+textColor = "#2B2823"
+borderColor = "#D9CDB0"
+dataframeBorderColor = "#D9CDB0"
+dataframeHeaderBackgroundColor = "#F1E9D8"
+font = "IBM Plex Sans:https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+headingFont = "Space Grotesk:https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap"
+codeFont = "IBM Plex Mono:https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+baseRadius = "0.5rem"
+buttonRadius = "0.5rem"
+showSidebarBorder = true
+chartCategoricalColors = ["#C99A3B", "#1B3358", "#3F7A4D", "#B0492E", "#7C8A99", "#8C6A2F"]
+
+[theme.sidebar]
+backgroundColor = "#1B3358"
+secondaryBackgroundColor = "#234070"
+textColor = "#F3EFE3"
+primaryColor = "#C99A3B"
+borderColor = "#2C4A7C"
