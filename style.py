@@ -1,319 +1,173 @@
 """
-style.py  —  SaccoOS Visual Layer
-Drop this next to app.py and add two lines to app.py:
+Visual identity for CommunityFinanceOS.
 
-    from style import apply_styles
-    apply_styles()          # call once, right after st.set_page_config()
+Design concept: the SACCO passbook. Every member-owned savings group in
+Uganda runs on a physical booklet, hand-stamped at every deposit — it's the
+actual artifact of trust in this world, more than any banking-app cliche.
+This theme borrows that vocabulary: ledger-ink indigo, a stamped-gold accent,
+a warm paper backdrop instead of clinical white, tabular monospace for money
+so figures actually align in a column, and a literal rubber-stamp badge for
+status tags (Active / Overdue / High Risk, etc).
 
-Palette
--------
-  Navy   #0B3D91  —  authority, trust
-  Jade   #00A86B  —  prosperity, active
-  Amber  #E8A020  —  at-risk loans
-  Red    #D32F2F  —  overdue / critical
-  Slate  #F0F4F8  —  app background
+Two-part split, because Streamlit's [theme] in config.toml only reaches
+native widgets (buttons, inputs, the sidebar shell, dataframes). Anything
+bespoke — the header band, the stamp badges, the sidebar wordmark — needs
+real CSS, injected once per page via inject_css() below.
+
+WHERE THIS PLUGS IN:
+- .streamlit/config.toml  -> base color/font theme (ships with the repo, no code needed)
+- modules/theme.py (this file) -> inject_css() + the two layout helpers below
+- app.py -> calls inject_css() once at the top, and render_brand_header()
+  inside the sidebar, right under st.sidebar.title(...)
 """
 
 import streamlit as st
 
+INK = "#1B3358"        # deep ledger indigo — headers, sidebar
+INK_SOFT = "#234070"   # lighter indigo — sidebar hover/active state
+GOLD = "#C99A3B"       # stamped gold — primary accent, used sparingly
+PAPER = "#FAF6EE"      # warm paper background (not stark white)
+PAPER_DIM = "#F1E9D8"  # card / secondary surface
+INK_TEXT = "#2B2823"   # body text — warm near-black, not pure #000
+LINE = "#D9CDB0"       # hairline borders on paper surfaces
+CREAM_TEXT = "#F3EFE3" # text on indigo surfaces
 
-def apply_styles() -> None:
-    st.markdown(
-        """
-        <style>
-        /* ── Fonts ─────────────────────────────────────────────── */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+STATUS_COLORS = {
+    "active":   ("#3F7A4D", "#E4EFE3"),  # (ink, soft background) — green family
+    "closed":   ("#5C5747", "#EDE7D8"),  # neutral stone — done and filed away
+    "low":      ("#3F7A4D", "#E4EFE3"),
+    "medium":   ("#A4732B", "#F6E9CE"),
+    "high":     ("#B0492E", "#F6DCD3"),
+    "overdue":  ("#B0492E", "#F6DCD3"),
+    "pending":  ("#7C8A99", "#E9EDF0"),
+}
 
-        html, body, [class*="css"] {
-            font-family: 'Inter', sans-serif;
-        }
 
-        /* ── App shell ──────────────────────────────────────────── */
-        .stApp {
-            background: #F0F4F8;
-        }
+def inject_css():
+    """Call once near the top of app.py, after st.set_page_config()."""
+    st.markdown(f"""
+    <style>
+    /* Tabular numerals for anything money-shaped: st.metric, dataframes, st.code —
+       so digits line up in a column instead of a serif font's proportional widths. */
+    [data-testid="stMetricValue"], [data-testid="stDataFrame"], code {{
+        font-variant-numeric: tabular-nums;
+    }}
 
-        /* ── Hide Streamlit chrome selectively ──────────────────── */
-        /* Only hide footer and the main menu icon */
-        #MainMenu, footer { visibility: hidden; }
-        header { background: transparent !important; }
+    /* Sidebar wordmark block — see render_brand_header() below, this styles it */
+    .cfos-brand {{
+        padding: 0.9rem 0.6rem 1.1rem 0.6rem;
+        border-bottom: 1px solid {INK_SOFT};
+        margin-bottom: 0.75rem;
+    }}
+    .cfos-brand-mark {{
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.1rem;
+        height: 2.1rem;
+        border-radius: 0.5rem;
+        background: {GOLD};
+        color: {INK};
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 700;
+        font-size: 1.05rem;
+        margin-right: 0.6rem;
+        flex-shrink: 0;
+    }}
+    .cfos-brand-row {{
+        display: flex;
+        align-items: center;
+    }}
+    .cfos-brand-name {{
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 600;
+        font-size: 1.05rem;
+        color: {CREAM_TEXT};
+        line-height: 1.15;
+    }}
+    .cfos-brand-sub {{
+        font-size: 0.74rem;
+        color: {GOLD};
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        margin-top: 0.1rem;
+    }}
 
-        /* FIX: Do NOT hide stHeaderActionElements broadly — in newer
-           Streamlit versions the sidebar collapse ">" toggle lives inside
-           that container. Hide only the deploy/toolbar sub-elements. */
-        [data-testid="stToolbar"]     { visibility: hidden; }
-        [data-testid="stDecoration"]  { visibility: hidden; }
+    /* Page header band — see render_page_header() below */
+    .cfos-header {{
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.5rem 1.2rem;
+        padding-bottom: 0.6rem;
+        margin-bottom: 1.1rem;
+        border-bottom: 2px solid {INK};
+    }}
+    .cfos-header-title {{
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 600;
+        font-size: 1.7rem;
+        color: {INK};
+        margin: 0;
+    }}
+    .cfos-header-meta {{
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.8rem;
+        color: #7C8A99;
+        white-space: nowrap;
+    }}
 
-        /* ── Always keep sidebar toggle visible ─────────────────── */
-        /* collapsedControl is the ">" button that reopens the sidebar */
-        [data-testid="collapsedControl"] {
-            visibility: visible !important;
-            display:     flex    !important;
-            opacity:     1       !important;
-        }
-        /* Also keep the mobile hamburger button in the header visible */
-        [data-testid="stHeader"] button {
-            visibility: visible !important;
-            display:     flex    !important;
-            opacity:     1       !important;
-        }
+    /* Stamp badge — a rotated-rubber-stamp look for status text.
+       Use via status_badge_html() rather than writing the markup by hand. */
+    .cfos-stamp {{
+        display: inline-block;
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 600;
+        font-size: 0.72rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        padding: 0.18rem 0.6rem;
+        border-radius: 0.3rem;
+        border: 1.5px solid currentColor;
+    }}
 
-        /* ── Sidebar ────────────────────────────────────────────── */
-        [data-testid="stSidebar"] {
-            background: #0B3D91 !important;
-            border-right: none !important;
-        }
-        [data-testid="stSidebar"] * {
-            color: #D6E4FF !important;
-        }
-        [data-testid="stSidebar"] h1,
-        [data-testid="stSidebar"] h2,
-        [data-testid="stSidebar"] h3 {
-            color: #FFFFFF !important;
-        }
-        /* Sidebar nav radio pills */
-        [data-testid="stSidebar"] .stRadio > div {
-            gap: 4px;
-        }
-        [data-testid="stSidebar"] .stRadio label {
-            background: rgba(255, 255, 255, 0.07);
-            border-radius: 8px;
-            padding: 10px 14px !important;
-            transition: background 0.15s ease;
-            cursor: pointer;
-            font-weight: 500 !important;
-        }
-        [data-testid="stSidebar"] .stRadio label:hover {
-            background: rgba(255, 255, 255, 0.15);
-        }
-        [data-testid="stSidebar"] .stSelectbox label {
-            color: #93B4E0 !important;
-            font-size: 11px !important;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-        }
+    /* Section dividers a touch warmer than Streamlit's default gray hairline */
+    hr {{ border-color: {LINE} !important; }}
+    </style>
+    """, unsafe_allow_html=True)
 
-        /* ── Typography ─────────────────────────────────────────── */
-        h1 {
-            color: #0B3D91 !important;
-            font-size: 26px !important;
-            font-weight: 700 !important;
-            letter-spacing: -0.4px;
-            line-height: 1.2;
-        }
-        h2 {
-            color: #1A1A2E !important;
-            font-size: 20px !important;
-            font-weight: 600 !important;
-        }
-        h3 {
-            color: #2C3E50 !important;
-            font-size: 16px !important;
-            font-weight: 600 !important;
-        }
 
-        /* ── KPI / Metric cards ─────────────────────────────────── */
-        [data-testid="stMetric"] {
-            background: #FFFFFF;
-            border-radius: 12px;
-            padding: 20px 22px !important;
-            box-shadow: 0 2px 8px rgba(11, 61, 145, 0.08);
-            border-left: 4px solid #00A86B;
-        }
-        [data-testid="stMetric"] label {
-            font-size: 11px !important;
-            font-weight: 700 !important;
-            text-transform: uppercase !important;
-            letter-spacing: 0.9px !important;
-            color: #6B7A8D !important;
-        }
-        [data-testid="stMetricValue"] {
-            font-family: 'JetBrains Mono', monospace !important;
-            font-size: 26px !important;
-            font-weight: 700 !important;
-            color: #0B3D91 !important;
-        }
-        [data-testid="stMetricDelta"] {
-            font-family: 'JetBrains Mono', monospace !important;
-            font-size: 13px !important;
-            font-weight: 500 !important;
-        }
+def render_brand_header():
+    """Sidebar wordmark. Call right under st.sidebar.title(), or instead of it."""
+    st.sidebar.markdown(f"""
+    <div class="cfos-brand">
+      <div class="cfos-brand-row">
+        <div class="cfos-brand-mark">CF</div>
+        <div>
+          <div class="cfos-brand-name">CommunityFinanceOS</div>
+          <div class="cfos-brand-sub">SACCO Operations</div>
+        </div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-        /* ── Buttons ────────────────────────────────────────────── */
-        .stButton > button {
-            background: linear-gradient(135deg, #00A86B, #007A4D) !important;
-            color: #FFFFFF !important;
-            border: none !important;
-            border-radius: 8px !important;
-            padding: 10px 22px !important;
-            font-family: 'Inter', sans-serif !important;
-            font-weight: 600 !important;
-            font-size: 14px !important;
-            letter-spacing: 0.2px !important;
-            transition: all 0.18s ease !important;
-            box-shadow: 0 2px 8px rgba(0, 168, 107, 0.30) !important;
-        }
-        .stButton > button:hover {
-            transform: translateY(-1px) !important;
-            box-shadow: 0 4px 14px rgba(0, 168, 107, 0.40) !important;
-        }
-        .stButton > button:active {
-            transform: translateY(0) !important;
-        }
-        /* Secondary / outline variant */
-        .stButton > button[kind="secondary"] {
-            background: transparent !important;
-            color: #0B3D91 !important;
-            border: 2px solid #0B3D91 !important;
-            box-shadow: none !important;
-        }
-        .stButton > button[kind="secondary"]:hover {
-            background: #EEF3FB !important;
-        }
 
-        /* ── Form inputs ────────────────────────────────────────── */
-        .stTextInput > div > div > input,
-        .stNumberInput > div > div > input,
-        .stTextArea > div > div > textarea {
-            border-radius: 8px !important;
-            border: 1.5px solid #D0DCE8 !important;
-            font-family: 'Inter', sans-serif !important;
-            font-size: 14px !important;
-            transition: border-color 0.15s, box-shadow 0.15s !important;
-        }
-        .stTextInput > div > div > input:focus,
-        .stNumberInput > div > div > input:focus,
-        .stTextArea > div > div > textarea:focus {
-            border-color: #00A86B !important;
-            box-shadow: 0 0 0 3px rgba(0, 168, 107, 0.12) !important;
-        }
-        .stSelectbox > div > div {
-            border-radius: 8px !important;
-            border: 1.5px solid #D0DCE8 !important;
-        }
-        .stSelectbox > div > div:focus-within {
-            border-color: #00A86B !important;
-            box-shadow: 0 0 0 3px rgba(0, 168, 107, 0.12) !important;
-        }
+def render_page_header(title, sacco_name=None):
+    """Replaces a bare st.header(choice) call with a ruled header band that
+    also shows which SACCO you're currently looking at, so it's never
+    ambiguous which book you're working in."""
+    meta = f"📘 {sacco_name}" if sacco_name else ""
+    st.markdown(f"""
+    <div class="cfos-header">
+      <h1 class="cfos-header-title">{title}</h1>
+      <div class="cfos-header-meta">{meta}</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-        /* ── DataFrames / Tables ────────────────────────────────── */
-        [data-testid="stDataFrame"],
-        [data-testid="stTable"] {
-            border-radius: 12px !important;
-            overflow: hidden !important;
-            box-shadow: 0 2px 8px rgba(11, 61, 145, 0.08) !important;
-        }
 
-        /* ── Expanders ──────────────────────────────────────────── */
-        [data-testid="stExpander"] {
-            background: #FFFFFF;
-            border-radius: 10px;
-            border: 1.5px solid #E0E8F0 !important;
-            box-shadow: 0 1px 4px rgba(11, 61, 145, 0.06);
-        }
-
-        /* ── Alert / toast messages ─────────────────────────────── */
-        [data-testid="stAlert"] {
-            border-radius: 10px !important;
-        }
-
-        /* ── Tabs ───────────────────────────────────────────────── */
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 6px;
-            border-bottom: 2px solid #E0E8F0;
-        }
-        .stTabs [data-baseweb="tab"] {
-            border-radius: 8px 8px 0 0 !important;
-            padding: 8px 18px !important;
-            font-weight: 500 !important;
-        }
-        .stTabs [aria-selected="true"] {
-            color: #0B3D91 !important;
-            font-weight: 700 !important;
-            border-bottom: 3px solid #00A86B !important;
-        }
-
-        /* ── Divider ────────────────────────────────────────────── */
-        hr {
-            border: none;
-            border-top: 1.5px solid #E0E8F0;
-            margin: 24px 0;
-        }
-
-        /* ── Utility classes (use via st.markdown) ──────────────── */
-
-        /* Status badges */
-        .badge {
-            display: inline-block;
-            padding: 3px 11px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            font-family: 'Inter', sans-serif;
-        }
-        .badge-current  { background: #D1FAE5; color: #065F46; }
-        .badge-atrisk   { background: #FEF3C7; color: #92400E; }
-        .badge-overdue  { background: #FEE2E2; color: #991B1B; }
-        .badge-settled  { background: #EDE9FE; color: #4C1D95; }
-
-        /* White card surface */
-        .sacco-card {
-            background: #FFFFFF;
-            border-radius: 14px;
-            padding: 24px 28px;
-            margin-bottom: 18px;
-            box-shadow: 0 2px 10px rgba(11, 61, 145, 0.09);
-            border-top: 3px solid #00A86B;
-        }
-
-        /* Red-accent card for critical alerts */
-        .sacco-card-alert {
-            background: #FFFFFF;
-            border-radius: 14px;
-            padding: 24px 28px;
-            margin-bottom: 18px;
-            box-shadow: 0 2px 10px rgba(211, 47, 47, 0.10);
-            border-top: 3px solid #D32F2F;
-        }
-
-        /* Amber-accent card for at-risk items */
-        .sacco-card-warn {
-            background: #FFFFFF;
-            border-radius: 14px;
-            padding: 24px 28px;
-            margin-bottom: 18px;
-            box-shadow: 0 2px 10px rgba(232, 160, 32, 0.10);
-            border-top: 3px solid #E8A020;
-        }
-
-        /* Monospace number spans */
-        .mono {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 15px;
-            font-weight: 500;
-        }
-
-        /* Page header bar */
-        .page-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding-bottom: 18px;
-            border-bottom: 2px solid #E0E8F0;
-            margin-bottom: 28px;
-        }
-        .page-header h1 { margin: 0 !important; padding: 0 !important; }
-
-        /* Section label */
-        .section-label {
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #6B7A8D;
-            margin-bottom: 10px;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+def status_badge_html(label, kind="pending"):
+    """Returns the HTML string for one stamp badge. Pass to st.markdown(..., unsafe_allow_html=True).
+    kind is matched case-insensitively against STATUS_COLORS; unknown kinds fall back to neutral."""
+    ink, bg = STATUS_COLORS.get(kind.lower(), STATUS_COLORS["pending"])
+    return f'<span class="cfos-stamp" style="color:{ink}; background:{bg};">{label}</span>'
