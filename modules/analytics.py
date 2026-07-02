@@ -1,13 +1,16 @@
 import streamlit as st
 from datetime import date, datetime
 from database import get_db_connection
+from modules.theme import status_badge_html
 
-def compute_risk_scores():
+def compute_risk_scores(sacco_id):
     """Risk-scores every active loan using missed installments, days overdue, and (for members) how much savings cushion they have against their balance."""
     conn = get_db_connection()
     today_str = date.today().strftime('%Y-%m-%d')
     loans = conn.execute(
-        """SELECT loans.*, customers.name as customer_name, customers.member_type, customers.occupation FROM loans JOIN customers ON loans.customer_id = customers.id WHERE loans.status = 'Active'"""
+        """SELECT loans.*, customers.name as customer_name, customers.member_type, customers.occupation FROM loans
+           JOIN customers ON loans.customer_id = customers.id WHERE loans.status = 'Active' AND loans.sacco_id = ?""",
+        (sacco_id,)
     ).fetchall()
 
     results = []
@@ -47,21 +50,31 @@ def compute_risk_scores():
     results.sort(key=lambda r: order[r['risk']])
     return results
 
-def get_category_breakdown():
+def get_category_breakdown(sacco_id):
     conn = get_db_connection()
     by_occupation = conn.execute(
-        """SELECT customers.occupation, COUNT(DISTINCT customers.id) as customer_count, COALESCE(SUM(CASE WHEN loans.status='Active' THEN loans.balance ELSE 0 END),0) as outstanding FROM customers LEFT JOIN loans ON loans.customer_id = customers.id GROUP BY customers.occupation"""
+        """SELECT customers.occupation, COUNT(DISTINCT customers.id) as customer_count,
+           COALESCE(SUM(CASE WHEN loans.status='Active' THEN loans.balance ELSE 0 END),0) as outstanding
+           FROM customers LEFT JOIN loans ON loans.customer_id = customers.id
+           WHERE customers.sacco_id = ? GROUP BY customers.occupation""",
+        (sacco_id,)
     ).fetchall()
     member_split = conn.execute(
-        "SELECT member_type, COUNT(*) as count FROM customers GROUP BY member_type"
+        "SELECT member_type, COUNT(*) as count FROM customers WHERE sacco_id = ? GROUP BY member_type",
+        (sacco_id,)
     ).fetchall()
     conn.close()
     return by_occupation, member_split
 
 def render():
+    sacco_id = st.session_state.get('current_sacco_id')
+    if sacco_id is None:
+        st.warning("No SACCO selected. Set up a SACCO Profile first.")
+        return
+
     st.write("#### ⚠️ Risk Analysis")
     st.caption("Every active loan, scored by missed installments, days overdue, and savings cushion (for members).")
-    scores = compute_risk_scores()
+    scores = compute_risk_scores(sacco_id)
     if scores:
         st.dataframe(
             [{"Loan ID": s['loan_id'], "Customer": s['customer'], "Type": s['member_type'],
@@ -72,13 +85,20 @@ def render():
         high = [s for s in scores if s['risk'] == 'High']
         if high:
             st.error(f"🚨 {len(high)} high-risk borrower(s) — recommend follow-up this week.")
+            for s in high:
+                st.markdown(
+                    f"{status_badge_html('High Risk', kind='high')} &nbsp; "
+                    f"**{s['customer']}** — Loan #{s['loan_id']}, UGX {s['balance']:,.0f} outstanding, "
+                    f"{s['missed_installments']} missed, {s['days_overdue']} days overdue",
+                    unsafe_allow_html=True
+                )
         else:
             st.success("No high-risk borrowers right now.")
     else:
         st.info("No active loans to analyze yet.")
 
     st.write("#### Customer Categories")
-    breakdown, member_split = get_category_breakdown()
+    breakdown, member_split = get_category_breakdown(sacco_id)
     if breakdown:
         st.dataframe(
             [{"Occupation": b['occupation'] or 'Not specified', "Customers": b['customer_count'],
@@ -92,3 +112,4 @@ def render():
             [{"Type": m['member_type'], "Count": m['count']} for m in member_split],
             use_container_width=True
         )
+
