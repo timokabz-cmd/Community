@@ -11,19 +11,27 @@ def add_guarantor(loan_id, name, phone, national_id, relationship):
     conn.commit()
     conn.close()
 
-def get_guarantors(loan_id=None):
+def get_guarantors(loan_id=None, sacco_id=None):
     conn = get_db_connection()
     if loan_id:
         rows = conn.execute("SELECT * FROM guarantors WHERE loan_id = ?", (loan_id,)).fetchall()
     else:
         rows = conn.execute(
-            """SELECT guarantors.*, loans.id as loan_ref, customers.name as borrower_name FROM guarantors JOIN loans ON guarantors.loan_id = loans.id JOIN customers ON loans.customer_id = customers.id ORDER BY guarantors.id DESC"""
+            """SELECT guarantors.*, loans.id as loan_ref, customers.name as borrower_name FROM guarantors
+               JOIN loans ON guarantors.loan_id = loans.id JOIN customers ON loans.customer_id = customers.id
+               WHERE loans.sacco_id = ? ORDER BY guarantors.id DESC""",
+            (sacco_id,)
         ).fetchall()
     conn.close()
     return rows
 
 def render():
-    loans = get_loans()
+    sacco_id = st.session_state.get('current_sacco_id')
+    if sacco_id is None:
+        st.warning("No SACCO selected. Set up a SACCO Profile first.")
+        return
+
+    loans = get_loans(sacco_id)
     st.write("#### Attach a Guarantor to a Loan")
     if not loans:
         st.warning("Issue a loan first before adding guarantors.")
@@ -44,7 +52,7 @@ def render():
                     st.error("Guarantor name and phone are required.")
 
     st.write("#### All Guarantors")
-    guarantors = get_guarantors()
+    guarantors = get_guarantors(sacco_id=sacco_id)
     if guarantors:
         st.dataframe(
             [{"Loan": f"#{g['loan_ref']}", "Borrower": g['borrower_name'], "Guarantor": g['name'],
