@@ -1,147 +1,181 @@
-""" One-click demo data loader for CommunityFinanceOS. Triggered from the "Demo Data" section in the Administration tab. Populates 20 realistic Ugandan member/outsider profiles — with savings, loans at different repayment stages (on-track, overdue, fully closed), guarantors, and collateral — so the Dashboard, Analytics, Reports, and AI Insights tabs all have real data to demonstrate. All names, phone numbers, and IDs below are fictional, for demo purposes only. """
-from datetime import date, timedelta
-from modules.customers import add_customer, get_customers
-from modules.savings import open_account, deposit
-from modules.loans import issue_loan
-from modules.collections import record_repayment
-from modules.guarantors import add_guarantor
-from modules.collateral import add_collateral
+"""
+Seeds the database with 2 example SACCOs and 20 members (10 each), plus savings
+accounts, loans, guarantors, collateral, and a couple of repayments — so the app
+has realistic-looking data to demo immediately after deployment.
 
-PROFILES = [
-    {"name": "Grace Nansubuga", "phone": "0772100001", "nin": "CM85021501AB", "type": "Member",
-     "occupation": "Trader / Shop Owner", "savings": 350000,
-     "loan": {"principal": 500000, "rate": 12, "term": 4, "disbursed_days_ago": 95},
-     "repayments": [{"amount": 150000, "days_ago": 40, "method": "MTN MoMo"}]},
+Run this once, locally, against a fresh finance.db (e.g. `python3 seed_data.py`),
+then commit the resulting finance.db to your repo alongside app.py. Streamlit
+Cloud will boot up with this data already in place.
 
-    {"name": "Peter Okello", "phone": "0701100002", "nin": "CM90031202CD", "type": "Outsider",
-     "occupation": "Boda Boda Rider", "savings": None,
-     "loan": {"principal": 300000, "rate": 15, "term": 3, "disbursed_days_ago": 10},
-     "repayments": []},
-
-    {"name": "Sarah Atim", "phone": "0752100003", "nin": "CM88041503EF", "type": "Member",
-     "occupation": "Farmer", "savings": 120000,
-     "loan": {"principal": 250000, "rate": 10, "term": 3, "disbursed_days_ago": 200},
-     "repayments": [
-         {"amount": 91667, "days_ago": 160, "method": "Airtel Money"},
-         {"amount": 91667, "days_ago": 130, "method": "Airtel Money"},
-         {"amount": 91666, "days_ago": 100, "method": "Airtel Money"},
-     ]},
-
-    {"name": "James Mukasa", "phone": "0782100004", "nin": "CM79051204GH", "type": "Member",
-     "occupation": "Teacher", "savings": 600000, "loan": None, "repayments": []},
-
-    {"name": "Ritah Nakimuli", "phone": "0712100005", "nin": "CM93061505IJ", "type": "Member",
-     "occupation": "Market Vendor", "savings": 80000,
-     "loan": {"principal": 150000, "rate": 10, "term": 2, "disbursed_days_ago": 5},
-     "repayments": []},
-
-    {"name": "David Ssempa", "phone": "0742100006", "nin": "CM86071306KL", "type": "Outsider",
-     "occupation": "Artisan / Craftsman", "savings": None,
-     "loan": {"principal": 400000, "rate": 18, "term": 4, "disbursed_days_ago": 130},
-     "repayments": [{"amount": 100000, "days_ago": 60, "method": "Cash"}]},
-
-    {"name": "Esther Auma", "phone": "0772100007", "nin": "CM91081507MN", "type": "Member",
-     "occupation": "Civil Servant", "savings": 900000, "loan": None, "repayments": []},
-
-    {"name": "Moses Kato", "phone": "0702100008", "nin": "CM84091308OP", "type": "Member",
-     "occupation": "Trader / Shop Owner", "savings": 250000,
-     "loan": {"principal": 600000, "rate": 12, "term": 5, "disbursed_days_ago": 45},
-     "repayments": [{"amount": 134400, "days_ago": 15, "method": "MTN MoMo"}]},
-
-    {"name": "Joyce Namatovu", "phone": "0752100009", "nin": "CM89101509QR", "type": "Member",
-     "occupation": "Salaried Employee", "savings": 450000, "loan": None, "repayments": []},
-
-    {"name": "Robert Tumwine", "phone": "0782100010", "nin": "CM82111310ST", "type": "Outsider",
-     "occupation": "Transporter", "savings": None,
-     "loan": {"principal": 800000, "rate": 20, "term": 6, "disbursed_days_ago": 200},
-     "repayments": [
-         {"amount": 160000, "days_ago": 170, "method": "Airtel Money"},
-         {"amount": 160000, "days_ago": 140, "method": "Airtel Money"},
-         {"amount": 160000, "days_ago": 110, "method": "Airtel Money"},
-         {"amount": 160000, "days_ago": 80, "method": "Airtel Money"},
-     ]},
-
-    {"name": "Patricia Akello", "phone": "0712100011", "nin": "CM94121511UV", "type": "Member",
-     "occupation": "Farmer", "savings": 60000,
-     "loan": {"principal": 180000, "rate": 10, "term": 3, "disbursed_days_ago": 70},
-     "repayments": []},
-
-    {"name": "Samuel Wasswa", "phone": "0742100012", "nin": "CM87011312WX", "type": "Member",
-     "occupation": "Boda Boda Rider", "savings": 40000,
-     "loan": {"principal": 200000, "rate": 15, "term": 2, "disbursed_days_ago": 100},
-     "repayments": [
-         {"amount": 115000, "days_ago": 70, "method": "MTN MoMo"},
-         {"amount": 115000, "days_ago": 40, "method": "MTN MoMo"},
-     ]},
-
-    {"name": "Florence Adongo", "phone": "0772100013", "nin": "CM90021513YZ", "type": "Member",
-     "occupation": "Market Vendor", "savings": 95000, "loan": None, "repayments": []},
-
-    {"name": "Charles Kirabo", "phone": "0702100014", "nin": "CM83031314AA", "type": "Outsider",
-     "occupation": "Trader / Shop Owner", "savings": None,
-     "loan": {"principal": 1000000, "rate": 15, "term": 6, "disbursed_days_ago": 20},
-     "repayments": []},
-
-    {"name": "Agnes Nyirahabimana", "phone": "0752100015", "nin": "CM92041515BB", "type": "Member",
-     "occupation": "Teacher", "savings": 700000,
-     "loan": {"principal": 300000, "rate": 10, "term": 3, "disbursed_days_ago": 15},
-     "repayments": []},
-
-    {"name": "Emmanuel Byaruhanga", "phone": "0782100016", "nin": "CM85051316CC", "type": "Member",
-     "occupation": "Civil Servant", "savings": 500000, "loan": None, "repayments": []},
-
-    {"name": "Stella Among", "phone": "0712100017", "nin": "CM91061517DD", "type": "Member",
-     "occupation": "Salaried Employee", "savings": 320000,
-     "loan": {"principal": 450000, "rate": 12, "term": 4, "disbursed_days_ago": 35},
-     "repayments": [{"amount": 126000, "days_ago": 5, "method": "MTN MoMo"}]},
-
-    {"name": "Francis Lubega", "phone": "0742100018", "nin": "CM88071318EE", "type": "Outsider",
-     "occupation": "Artisan / Craftsman", "savings": None,
-     "loan": {"principal": 250000, "rate": 18, "term": 3, "disbursed_days_ago": 50},
-     "repayments": []},
-
-    {"name": "Brenda Kemigisha", "phone": "0772100019", "nin": "CM93081519FF", "type": "Member",
-     "occupation": "Farmer", "savings": 150000, "loan": None, "repayments": []},
-
-    {"name": "Vincent Opio", "phone": "0702100020", "nin": "CM86091320GG", "type": "Member",
-     "occupation": "Trader / Shop Owner", "savings": 280000,
-     "loan": {"principal": 700000, "rate": 12, "term": 5, "disbursed_days_ago": 8},
-     "repayments": []},
-]
+Safe to re-run: it checks for each SACCO by name first and skips creating it
+(and its members) again if it's already there, so running it twice won't
+duplicate everything.
+"""
+from datetime import datetime, timedelta
+from database import init_db, get_db_connection
+from modules import sacco_profile, customers, savings, loans, guarantors, collateral, collections
 
 
-def seed_demo_data():
-    """Idempotent: re-running this skips any profile whose phone number is already in the database, so it's safe to click more than once."""
-    existing_phones = {c['phone'] for c in get_customers()}
-    created, skipped = 0, 0
+def backdate_loan(loan_id, months_ago):
+    """Shifts a loan's disbursed_date and schedule due_dates into the past, so
+    some installments show up as genuinely overdue in Analytics/Reports/Dashboard
+    — without this, every demo loan looks fresh since issue_loan() always uses 'today'."""
+    conn = get_db_connection()
+    loan = conn.execute("SELECT disbursed_date FROM loans WHERE id=?", (loan_id,)).fetchone()
+    old_date = datetime.strptime(loan['disbursed_date'], '%Y-%m-%d')
+    new_date = old_date - timedelta(days=months_ago * 30)
+    conn.execute("UPDATE loans SET disbursed_date=? WHERE id=?", (new_date.strftime('%Y-%m-%d'), loan_id))
+    schedule = conn.execute("SELECT id, due_date FROM loan_schedule WHERE loan_id=?", (loan_id,)).fetchall()
+    for s in schedule:
+        old_due = datetime.strptime(s['due_date'], '%Y-%m-%d')
+        new_due = old_due - timedelta(days=months_ago * 30)
+        conn.execute("UPDATE loan_schedule SET due_date=? WHERE id=?", (new_due.strftime('%Y-%m-%d'), s['id']))
+    conn.commit()
+    conn.close()
 
-    for profile in PROFILES:
-        if profile["phone"] in existing_phones:
-            skipped += 1
-            continue
 
-        add_customer(profile["name"], profile["phone"], profile["nin"], profile["type"], profile["occupation"])
-        customer = next(c for c in get_customers() if c['phone'] == profile["phone"])
-        created += 1
+def seed_sacco(profile_data, members, loan_plan):
+    conn = get_db_connection()
+    existing = conn.execute("SELECT id FROM sacco_profile WHERE sacco_name=?", (profile_data['sacco_name'],)).fetchone()
+    conn.close()
+    if existing:
+        print(f"  Skipping '{profile_data['sacco_name']}' — already exists (id={existing['id']}).")
+        return existing['id']
 
-        if profile["savings"] is not None and profile["type"] == "Member":
-            acc_id = open_account(customer['id'])
-            deposit(acc_id, profile["savings"])
+    sacco_id = sacco_profile.create_sacco(profile_data)
+    print(f"  Created SACCO '{profile_data['sacco_name']}' (id={sacco_id})")
 
-        if profile["loan"]:
-            loan = profile["loan"]
-            disbursed_date = date.today() - timedelta(days=loan["disbursed_days_ago"])
-            loan_id = issue_loan(customer['id'], loan["principal"], loan["rate"], loan["term"], disbursed_date)
+    customer_ids = []
+    for m in members:
+        customers.add_customer(
+            m['name'], m['phone'], m['national_id'], sacco_id, m['member_type'], m['occupation'],
+            None, m['gender'], m['dob'], m['pwd'], m['subsistence'], m['village'], m['parish']
+        )
+        cust = [c for c in customers.get_customers(sacco_id) if c['phone'] == m['phone']][0]
+        customer_ids.append(cust['id'])
 
-            for rp in profile["repayments"]:
-                txn_date = date.today() - timedelta(days=rp["days_ago"])
-                record_repayment(loan_id, rp["amount"], rp["method"], txn_date=txn_date)
+    # Open savings accounts + a deposit for every Member (not Outsiders)
+    name_to_id = {m['name']: cid for m, cid in zip(members, customer_ids)}
+    for m, cid in zip(members, customer_ids):
+        if m['member_type'] == 'Member':
+            acc_id = savings.open_account(cid, sacco_id)
+            savings.deposit(acc_id, m['deposit'], sacco_id, m['channel'])
 
-            # Larger loans and outsider loans get a guarantor/collateral on file, for realism
-            if loan["principal"] >= 400000:
-                first_name = profile["name"].split()[0]
-                add_guarantor(loan_id, f"{first_name}'s Guarantor", "0770000000", "N/A", "Relative")
-            if profile["type"] == "Outsider":
-                add_collateral(loan_id, "Motorcycle / asset held as security", round(loan["principal"] * 1.2))
+    # Issue loans per the loan_plan for this SACCO
+    for plan in loan_plan:
+        cid = name_to_id[plan['name']]
+        loan_id = loans.issue_loan(cid, plan['principal'], plan['rate'], plan['term'], sacco_id)
+        if plan.get('guarantor'):
+            g = plan['guarantor']
+            guarantors.add_guarantor(loan_id, g['name'], g['phone'], g['nid'], g['relationship'])
+        if plan.get('collateral'):
+            c = plan['collateral']
+            collateral.add_collateral(loan_id, c['description'], c['value'])
+        if plan.get('backdate_months'):
+            backdate_loan(loan_id, plan['backdate_months'])
+        if plan.get('repay_full'):
+            loan = loans.get_loan(loan_id)
+            collections.record_repayment(loan_id, loan['total_due'], sacco_id, plan.get('repay_channel', 'MTN MoMo'))
+        elif plan.get('repay_partial'):
+            collections.record_repayment(loan_id, plan['repay_partial'], sacco_id, plan.get('repay_channel', 'Cash'))
 
-    return created, skipped
+    print(f"    -> {len(members)} members, {len(loan_plan)} loans seeded.")
+    return sacco_id
+
+
+def run_seed():
+    init_db()
+    print("Seeding demo data...")
+
+    # =========================== SACCO A ===========================
+    sacco_a_profile = {
+        'sacco_name': 'Namuwongo United SACCO',
+        'parish': 'Namuwongo', 'sub_county': 'Nakawa Division', 'constituency': 'Nakawa',
+        'district': 'Kampala', 'date_of_formation': '2023-06-01',
+        'ursb_registration_number': 'URSB/SACCO/2023/04567',
+        'permanent_registration_status': 'Yes',
+        'bank_name': 'Centenary Bank', 'bank_account_number': '3100123456',
+        'total_registered_members': 10, 'number_of_enterprise_groups': 3,
+        'emyooga_category': 'Market Vendors', 'apex_sacco_name': 'Nakawa Constituency SACCO',
+        'parish_associations': 'Namuwongo Traders Association\nLuzira Roadside Vendors Association',
+        'number_of_parish_associations': 2,
+        'date_of_last_agm': '2026-02-14', 'date_of_last_audit': '2025-12-10',
+        'auditor_name': 'Highgate Audit & Tax Advisors', 'audit_report_filed': 'Yes',
+        'annual_subscription_paid': 'Yes',
+        'share_capital_per_member': 100000.0, 'membership_joining_fee': 50000.0,
+    }
+    sacco_a_members = [
+        {'name': 'Nakimuli Sarah', 'phone': '0772100001', 'national_id': 'CM91234501', 'gender': 'Female', 'dob': '1988-04-12', 'pwd': 'No', 'subsistence': 'No', 'village': 'Bukasa', 'parish': 'Namuwongo', 'member_type': 'Member', 'occupation': 'Trader / Shop Owner', 'deposit': 150000, 'channel': 'MTN MoMo'},
+        {'name': 'Okello Patrick', 'phone': '0772100002', 'national_id': 'CM91234502', 'gender': 'Male', 'dob': '1979-09-23', 'pwd': 'No', 'subsistence': 'Yes', 'village': 'Bukasa', 'parish': 'Namuwongo', 'member_type': 'Member', 'occupation': 'Farmer', 'deposit': 80000, 'channel': 'Cash'},
+        {'name': 'Nansubuga Joan', 'phone': '0772100003', 'national_id': 'CM91234503', 'gender': 'Female', 'dob': '2002-03-15', 'pwd': 'No', 'subsistence': 'Yes', 'village': 'Kasubi', 'parish': 'Lubaga', 'member_type': 'Member', 'occupation': 'Market Vendor', 'deposit': 60000, 'channel': 'Airtel Money'},
+        {'name': 'Ssempala Moses', 'phone': '0772100004', 'national_id': 'CM91234504', 'gender': 'Male', 'dob': '1995-11-02', 'pwd': 'No', 'subsistence': 'No', 'village': 'Bukasa', 'parish': 'Namuwongo', 'member_type': 'Member', 'occupation': 'Boda Boda Rider', 'deposit': 40000, 'channel': 'MTN MoMo'},
+        {'name': 'Atim Grace', 'phone': '0772100005', 'national_id': 'CM91234505', 'gender': 'Female', 'dob': '1992-06-30', 'pwd': 'No', 'subsistence': 'No', 'village': 'Luzira', 'parish': 'Namuwongo', 'member_type': 'Outsider', 'occupation': 'Artisan / Craftsman', 'deposit': 0, 'channel': 'Cash'},
+        {'name': 'Kato Henry', 'phone': '0772100006', 'national_id': 'CM91234506', 'gender': 'Male', 'dob': '1965-01-20', 'pwd': 'Yes', 'subsistence': 'No', 'village': 'Bukasa', 'parish': 'Lubaga', 'member_type': 'Member', 'occupation': 'Civil Servant', 'deposit': 200000, 'channel': 'Bank Transfer'},
+        {'name': 'Namutebi Irene', 'phone': '0772100007', 'national_id': 'CM91234507', 'gender': 'Female', 'dob': '1985-08-08', 'pwd': 'No', 'subsistence': 'No', 'village': 'Kibuye', 'parish': 'Namuwongo', 'member_type': 'Member', 'occupation': 'Salaried Employee', 'deposit': 120000, 'channel': 'MTN MoMo'},
+        {'name': 'Wasswa Charles', 'phone': '0772100008', 'national_id': 'CM91234508', 'gender': 'Male', 'dob': '2000-02-18', 'pwd': 'No', 'subsistence': 'No', 'village': 'Bukasa', 'parish': 'Namuwongo', 'member_type': 'Member', 'occupation': 'Transporter', 'deposit': 30000, 'channel': 'Airtel Money'},
+        {'name': 'Achen Brenda', 'phone': '0772100009', 'national_id': 'CM91234509', 'gender': 'Female', 'dob': '1998-12-05', 'pwd': 'No', 'subsistence': 'Yes', 'village': 'Luzira', 'parish': 'Namuwongo', 'member_type': 'Outsider', 'occupation': 'Market Vendor', 'deposit': 0, 'channel': 'Cash'},
+        {'name': 'Mugisha Robert', 'phone': '0772100010', 'national_id': 'CM91234510', 'gender': 'Male', 'dob': '1972-07-14', 'pwd': 'No', 'subsistence': 'No', 'village': 'Bukasa', 'parish': 'Lubaga', 'member_type': 'Member', 'occupation': 'Trader / Shop Owner', 'deposit': 175000, 'channel': 'Bank Transfer'},
+    ]
+    sacco_a_loans = [
+        {'name': 'Nakimuli Sarah', 'principal': 500000, 'rate': 10, 'term': 4,
+         'guarantor': {'name': 'Nakimuli Peter', 'phone': '0772199001', 'nid': 'CM80011001', 'relationship': 'Husband'},
+         'repay_partial': 150000, 'repay_channel': 'MTN MoMo'},
+        {'name': 'Okello Patrick', 'principal': 300000, 'rate': 8, 'term': 3,
+         'collateral': {'description': 'Cattle (2 heads)', 'value': 1200000}},
+        {'name': 'Ssempala Moses', 'principal': 400000, 'rate': 10, 'term': 3,
+         'backdate_months': 4},  # deliberately overdue, for a realistic high-risk demo case
+        {'name': 'Namutebi Irene', 'principal': 250000, 'rate': 9, 'term': 2,
+         'repay_full': True, 'repay_channel': 'Bank Transfer'},  # shown as Closed
+        {'name': 'Mugisha Robert', 'principal': 600000, 'rate': 10, 'term': 6,
+         'guarantor': {'name': 'Mugisha Florence', 'phone': '0772199002', 'nid': 'CM80011002', 'relationship': 'Wife'},
+         'collateral': {'description': 'Shop fittings & stock, Namuwongo market', 'value': 2000000}},
+    ]
+    seed_sacco(sacco_a_profile, sacco_a_members, sacco_a_loans)
+
+    # =========================== SACCO B ===========================
+    sacco_b_profile = {
+        'sacco_name': 'Bwaise Traders SACCO',
+        'parish': 'Bwaise III', 'sub_county': 'Kawempe Division', 'constituency': 'Kawempe North',
+        'district': 'Kampala', 'date_of_formation': '2022-11-15',
+        'ursb_registration_number': 'URSB/SACCO/2022/03210',
+        'permanent_registration_status': 'No',
+        'bank_name': 'Stanbic Bank', 'bank_account_number': '9030456789',
+        'total_registered_members': 10, 'number_of_enterprise_groups': 2,
+        'emyooga_category': 'Boda Boda', 'apex_sacco_name': 'Kawempe North Constituency SACCO',
+        'parish_associations': 'Bwaise Boda Riders Association\nKazo Roundabout Vendors Association',
+        'number_of_parish_associations': 2,
+        'date_of_last_agm': '2025-12-20', 'date_of_last_audit': '',
+        'auditor_name': '', 'audit_report_filed': 'No',
+        'annual_subscription_paid': 'Yes',
+        'share_capital_per_member': 100000.0, 'membership_joining_fee': 50000.0,
+    }
+    sacco_b_members = [
+        {'name': 'Kirabo Esther', 'phone': '0701200001', 'national_id': 'CM92234501', 'gender': 'Female', 'dob': '1991-05-09', 'pwd': 'No', 'subsistence': 'No', 'village': 'Bwaise III', 'parish': 'Kawempe', 'member_type': 'Member', 'occupation': 'Market Vendor', 'deposit': 90000, 'channel': 'Airtel Money'},
+        {'name': 'Ssebunya Tonny', 'phone': '0701200002', 'national_id': 'CM92234502', 'gender': 'Male', 'dob': '1987-10-01', 'pwd': 'No', 'subsistence': 'No', 'village': 'Kazo', 'parish': 'Bwaise', 'member_type': 'Member', 'occupation': 'Boda Boda Rider', 'deposit': 50000, 'channel': 'MTN MoMo'},
+        {'name': 'Nakitto Florence', 'phone': '0701200003', 'national_id': 'CM92234503', 'gender': 'Female', 'dob': '1980-02-27', 'pwd': 'No', 'subsistence': 'Yes', 'village': 'Bwaise II', 'parish': 'Kawempe', 'member_type': 'Member', 'occupation': 'Trader / Shop Owner', 'deposit': 130000, 'channel': 'Cash'},
+        {'name': 'Lubega David', 'phone': '0701200004', 'national_id': 'CM92234504', 'gender': 'Male', 'dob': '1996-09-19', 'pwd': 'No', 'subsistence': 'No', 'village': 'Kazo', 'parish': 'Bwaise', 'member_type': 'Member', 'occupation': 'Boda Boda Rider', 'deposit': 35000, 'channel': 'MTN MoMo'},
+        {'name': 'Namusoke Betty', 'phone': '0701200005', 'national_id': 'CM92234505', 'gender': 'Female', 'dob': '2003-01-11', 'pwd': 'No', 'subsistence': 'Yes', 'village': 'Bwaise III', 'parish': 'Kawempe', 'member_type': 'Member', 'occupation': 'Artisan / Craftsman', 'deposit': 25000, 'channel': 'Airtel Money'},
+        {'name': 'Kasozi Ronald', 'phone': '0701200006', 'national_id': 'CM92234506', 'gender': 'Male', 'dob': '1969-12-24', 'pwd': 'Yes', 'subsistence': 'No', 'village': 'Bwaise I', 'parish': 'Kawempe', 'member_type': 'Outsider', 'occupation': 'Other', 'deposit': 0, 'channel': 'Cash'},
+        {'name': 'Tumusiime Agnes', 'phone': '0701200007', 'national_id': 'CM92234507', 'gender': 'Female', 'dob': '1994-07-07', 'pwd': 'No', 'subsistence': 'No', 'village': 'Kazo', 'parish': 'Bwaise', 'member_type': 'Member', 'occupation': 'Market Vendor', 'deposit': 70000, 'channel': 'MTN MoMo'},
+        {'name': 'Byaruhanga Allan', 'phone': '0701200008', 'national_id': 'CM92234508', 'gender': 'Male', 'dob': '1983-04-04', 'pwd': 'No', 'subsistence': 'No', 'village': 'Bwaise II', 'parish': 'Kawempe', 'member_type': 'Member', 'occupation': 'Transporter', 'deposit': 100000, 'channel': 'Bank Transfer'},
+        {'name': 'Nabirye Sandra', 'phone': '0701200009', 'national_id': 'CM92234509', 'gender': 'Female', 'dob': '1999-11-29', 'pwd': 'No', 'subsistence': 'No', 'village': 'Bwaise III', 'parish': 'Kawempe', 'member_type': 'Outsider', 'occupation': 'Other', 'deposit': 0, 'channel': 'Cash'},
+        {'name': 'Mukasa Isaac', 'phone': '0701200010', 'national_id': 'CM92234510', 'gender': 'Male', 'dob': '1975-03-03', 'pwd': 'No', 'subsistence': 'No', 'village': 'Bwaise I', 'parish': 'Kawempe', 'member_type': 'Member', 'occupation': 'Teacher', 'deposit': 140000, 'channel': 'MTN MoMo'},
+    ]
+    sacco_b_loans = [
+        {'name': 'Ssebunya Tonny', 'principal': 350000, 'rate': 9, 'term': 3,
+         'collateral': {'description': 'Motorcycle, Reg #UAX 245K', 'value': 4500000}},
+        {'name': 'Nakitto Florence', 'principal': 450000, 'rate': 10, 'term': 4,
+         'guarantor': {'name': 'Nakitto James', 'phone': '0701299001', 'nid': 'CM81011003', 'relationship': 'Brother'},
+         'repay_partial': 100000, 'repay_channel': 'Cash'},
+        {'name': 'Lubega David', 'principal': 280000, 'rate': 9, 'term': 3,
+         'backdate_months': 5},  # deliberately overdue
+        {'name': 'Byaruhanga Allan', 'principal': 300000, 'rate': 8, 'term': 2,
+         'repay_full': True, 'repay_channel': 'Bank Transfer'},  # shown as Closed
+    ]
+    seed_sacco(sacco_b_profile, sacco_b_members, sacco_b_loans)
+
+    print("\nDone. Default login is admin / admin123 (or your ADMIN_PASSWORD secret) — switch SACCOs from the sidebar.")
+
+
+if __name__ == "__main__":
+    run_seed()
