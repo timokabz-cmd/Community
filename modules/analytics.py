@@ -1,7 +1,7 @@
 import streamlit as st
 from datetime import date, datetime
 from database import get_db_connection
-from modules.theme import status_badge_html
+from modules.theme import status_badge_html, money_column
 
 def compute_risk_scores(sacco_id):
     """Risk-scores every active loan using missed installments, days overdue, and (for members) how much savings cushion they have against their balance."""
@@ -80,6 +80,7 @@ def render():
             [{"Loan ID": s['loan_id'], "Customer": s['customer'], "Type": s['member_type'],
               "Occupation": s['occupation'] or '—', "Balance": s['balance'], "Missed": s['missed_installments'],
               "Days Overdue": s['days_overdue'], "Savings": s['savings_balance'], "Risk": s['risk']} for s in scores],
+            column_config={"Balance": money_column(), "Savings": money_column()},
             use_container_width=True
         )
         high = [s for s in scores if s['risk'] == 'High']
@@ -103,6 +104,7 @@ def render():
         st.dataframe(
             [{"Occupation": b['occupation'] or 'Not specified', "Customers": b['customer_count'],
               "Outstanding Balance": b['outstanding']} for b in breakdown],
+            column_config={"Outstanding Balance": money_column()},
             use_container_width=True
         )
 
@@ -112,4 +114,3 @@ def render():
             [{"Type": m['member_type'], "Count": m['count']} for m in member_split],
             use_container_width=True
         )
-
