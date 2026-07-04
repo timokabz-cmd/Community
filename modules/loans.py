@@ -4,7 +4,7 @@ from datetime import datetime, date, timedelta
 from database import get_db_connection
 from modules.accounting import post_double_entry
 from modules.customers import get_customers
-from modules.theme import status_badge_html
+from modules.theme import status_badge_html, money_column
 
 def add_months(source_date, months):
     month = source_date.month - 1 + months
@@ -163,6 +163,7 @@ def render():
         [{"Loan ID": l['id'], "Customer": l['customer_name'], "Principal": l['principal'],
           "Rate %": l['interest_rate'], "Total Due": l['total_due'], "Balance": l['balance'],
           "Status": l['status'], "Disbursed": l['disbursed_date']} for l in loans],
+        column_config={"Principal": money_column(), "Total Due": money_column(), "Balance": money_column()},
         use_container_width=True
     )
 
@@ -183,6 +184,7 @@ def render():
         st.dataframe(
             [{"Installment": s['installment_no'], "Due Date": s['due_date'], "Due Amount": s['due_amount'],
               "Paid": s['paid_amount'], "Status": s['status']} for s in schedule],
+            column_config={"Due Amount": money_column(), "Paid": money_column()},
             use_container_width=True
         )
     else:
@@ -205,7 +207,34 @@ def render():
         st.dataframe(
             [{"Description": c['description'], "Estimated Value": c['estimated_value'],
               "Status": c['status']} for c in collateral_items],
+            column_config={"Estimated Value": money_column()},
             use_container_width=True
         )
     else:
         st.caption("No collateral on file for this loan.")
+
+    with st.expander("➕ Add a guarantor or collateral to this loan"):
+        st.caption("For a guarantor or collateral that wasn't captured when the loan was issued.")
+        with st.form(f"add_extra_{selected_loan_id}", clear_on_submit=True):
+            st.write("**Guarantor**")
+            eg_name = st.text_input("Guarantor full name", key="eg_name")
+            eg_phone = st.text_input("Guarantor phone number", key="eg_phone")
+            eg_nid = st.text_input("Guarantor National ID", key="eg_nid")
+            eg_relationship = st.text_input("Relationship to borrower", key="eg_relationship")
+            st.write("**Collateral**")
+            ec_description = st.text_input("Collateral description", key="ec_description")
+            ec_value = st.number_input("Estimated value (UGX)", min_value=0.0, step=10000.0, key="ec_value")
+            submitted_extra = st.form_submit_button("Add to This Loan")
+            if submitted_extra:
+                added = False
+                if eg_name and eg_phone:
+                    add_guarantor(selected_loan_id, eg_name, eg_phone, eg_nid, eg_relationship)
+                    added = True
+                if ec_description:
+                    add_collateral(selected_loan_id, ec_description, ec_value)
+                    added = True
+                if added:
+                    st.success("Added to this loan.")
+                    st.rerun()
+                else:
+                    st.warning("Enter a guarantor (name + phone) or a collateral description.")
