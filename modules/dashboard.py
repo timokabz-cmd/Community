@@ -4,6 +4,7 @@ from database import get_db_connection
 from modules.collections import get_messages
 from modules.reports import get_portfolio_at_risk
 from modules.loans import get_upcoming_installments
+from modules.theme import money_column
 
 def render():
     sacco_id = st.session_state.get('current_sacco_id')
@@ -60,6 +61,7 @@ def render():
         st.dataframe(
             [{"Due Date": u['due_date'], "Customer": u['customer_name'], "Phone": u['customer_phone'],
               "Amount Due": u['due_amount'] - u['paid_amount'], "Loan ID": u['loan_id']} for u in upcoming],
+            column_config={"Amount Due": money_column()},
             use_container_width=True
         )
     else:
