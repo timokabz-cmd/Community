@@ -1,8 +1,9 @@
 import streamlit as st
 from database import init_db
 from auth import ensure_admin_account, verify_user, update_password
+from seed_data import run_seed
 from modules import (
-    dashboard, customers, savings, loans, guarantors, collateral,
+    dashboard, customers, savings, loans,
     collections, accounting, reports, analytics, administration, ai_insights, sacco_profile, theme
 )
 from modules.sacco_profile import get_all_saccos
@@ -11,6 +12,18 @@ st.set_page_config(layout="wide", page_title="CommunityFinanceOS", page_icon="�
 theme.inject_css()
 init_db()
 ensure_admin_account()
+
+# Auto-seed the 2 demo SACCOs + 20 members on first boot, so there's nothing to
+# manually upload — seed_data.py is plain text and pastes fine into GitHub's editor,
+# unlike the finance.db binary file this replaces. run_seed() checks each SACCO by
+# name before creating it, so this is safe to leave here permanently: once the demo
+# SACCOs exist, every later boot just does a couple of quick "already exists" checks
+# and does nothing else. It also means if Streamlit Cloud's storage ever gets wiped
+# on a redeploy, the app repopulates itself instead of coming up empty.
+try:
+    run_seed()
+except Exception as e:
+    print(f"Seed step skipped due to an error (app still starts normally): {e}")
 
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
@@ -75,8 +88,6 @@ elif is_super_admin:
         "🏦 Savings": savings.render,
         "💰 Loans": loans.render,
         "📅 Collections": collections.render,
-        "🛡 Guarantors": guarantors.render,
-        "📂 Collateral": collateral.render,
         "💼 Accounting": accounting.render,
         "📈 Reports": reports.render,
         "📊 Analytics": analytics.render,
@@ -97,8 +108,6 @@ else:
         "🏦 Savings": savings.render,
         "💰 Loans": loans.render,
         "📅 Collections": collections.render,
-        "🛡 Guarantors": guarantors.render,
-        "📂 Collateral": collateral.render,
         "💼 Accounting": accounting.render,
         "📈 Reports": reports.render,
         "📊 Analytics": analytics.render,
