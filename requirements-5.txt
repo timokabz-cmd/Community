@@ -1,0 +1,33 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CommunityFinanceOS — SaccoOS Platform
+# requirements.txt
+# Pinned for Streamlit Cloud (Python 3.11)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Core framework
+streamlit>=1.35.0
+
+# PostgreSQL driver — replaces SQLite for Supabase shared database
+psycopg2-binary>=2.9.9
+
+# Date utilities (monthly trend calculations in reports.py)
+python-dateutil>=2.9.0
+
+# AI Insights (Anthropic API)
+anthropic>=0.28.0
+
+# QR code generation
+qrcode[pil]>=7.4.2
+Pillow>=10.3.0
+
+# PDF generation (report exports — roadmap)
+reportlab>=4.2.0
+
+# Excel exports
+openpyxl>=3.1.2
+
+# HTTP requests (payment gateway integrations)
+requests>=2.32.0
+
+# Environment variable management (local dev)
+python-dotenv>=1.0.1
